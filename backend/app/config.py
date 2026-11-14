@@ -14,10 +14,11 @@ class Settings(BaseSettings):
     mongodb_uri: str = ""
     mongodb_db: str = "cooldown"
 
-    llm_provider: str = "anthropic"
+    llm_provider: str = "openai"  # openai | anthropic
+    openai_api_key: str = ""
     anthropic_api_key: str = ""
-    llm_model_smart: str = "claude-sonnet-5"
-    llm_model_fast: str = "claude-haiku-4-5"
+    llm_model_smart: str = "gpt-5.5"  # Planner, Auditor
+    llm_model_fast: str = "gpt-5.4-mini"  # world agents, Negotiator
     llm_concurrency: int = 10
     llm_mode: str = "live"  # live | cache_first | cache_only
 

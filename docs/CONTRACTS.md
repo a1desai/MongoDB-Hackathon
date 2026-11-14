@@ -20,8 +20,10 @@ there, add it and note it at the top of your final report.
 3. **Auditor retrieval is hybrid search**: `$rankFusion` over an Atlas Search index on `ledger.summary`
    (`ledger_search`) and an `autoEmbed` vector index on `ledger.summary`, plus `$vectorSearch` on
    `policy_docs`. Fall back to a `$regex`/`$text` query if search indexes are not ready.
-4. **Models**: `LLM_MODEL_SMART=claude-sonnet-5`, `LLM_MODEL_FAST=claude-haiku-4-5`. With no
-   `ANTHROPIC_API_KEY`, every LLM call takes the deterministic fallback (`source: "fallback"`).
+4. **LLM provider is OpenAI** (`LLM_PROVIDER=openai`, `OPENAI_API_KEY`, `LLM_MODEL_SMART=gpt-5.5`,
+   `LLM_MODEL_FAST=gpt-5.4-mini`), using the `openai` SDK with JSON-schema structured output and
+   `langsmith.wrappers.wrap_openai`. `LLM_PROVIDER=anthropic` stays supported. With no key for the
+   selected provider, every LLM call takes the deterministic fallback (`source: "fallback"`).
 5. **No Cognee**: it would add SQLite/LanceDB/Kuzu stores, which breaks PLAN rule 2 (Atlas is the
    only database). Atlas Vector Search + Automated Embedding is the memory layer.
 6. Python 3.12. Backend venv: `cd backend && uv venv --python 3.12 .venv && uv pip install -r requirements.txt`.
