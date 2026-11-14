@@ -90,8 +90,6 @@
 .event-toggle{width:100%;display:grid;grid-template-columns:9px minmax(0,1fr) auto;gap:11px;align-items:start;text-align:left;padding:12px 20px;border:0;background:none;color:inherit}
 .event-toggle:hover,.event-toggle[aria-expanded="true"]{background:#1b2b38;filter:none}
 .event-indicator{width:7px;height:7px;border-radius:50%;background:#6bb1d3;margin-top:4px}
-.activity-event[data-stage="execution_verified"] .event-indicator{background:#6ee0b8}
-.activity-event[data-stage="contingency"] .event-indicator,.activity-event[data-verdict="deny"] .event-indicator,.activity-event[data-stage="execution_failed"] .event-indicator{background:#ff9b80}
 .event-text{min-width:0;display:grid;gap:4px}
 .event-text strong{font-size:14px;font-weight:600;line-height:1.35}
 .event-meta,.event-tail{color:#9db3c1;font-size:11px}

@@ -1,4 +1,4 @@
-import React, {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
+import React, {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import mapboxgl from 'mapbox-gl';
 import {Layers,Activity,Map as MapIcon,MapPin,Play,Pause,Plus,Minus,LocateFixed,X,Zap,ChevronRight,RotateCcw,Box,Globe} from 'lucide-react';
@@ -19,6 +19,7 @@ const localHour = new Intl.DateTimeFormat('en-GB', {timeZone: 'America/Toronto',
 const IESO_MAP = 'https://www.ieso.ca/localContent/zonal.map/index.html';
 const ONTARIO_LINES = 'https://data.ontario.ca/dataset/utility-line';
 const EMPTY_FEATURES = {type:'FeatureCollection', features:[]};
+const NO_FEEDERS = [];
 const INCIDENTS = [
  ['generator_trip','Generator trip','Bring forward the next scheduled trip, or remove 350 MW of supply.'],
  ['intertie_loss','Intertie loss','Interrupt imported supply. The default is 200 MW for 45 simulated minutes.'],
@@ -69,7 +70,7 @@ function RunWorkspace({simulation, startingTitle}) {
  const [showLines, setShowLines]=useState(true), [showFeeders, setShowFeeders]=useState(true);
  const [feederMap, setFeederMap]=useState(EMPTY_FEATURES), [feederError, setFeederError]=useState('');
  const [feederId, setFeederId]=useState(null);
- const [activityFeeders, setActivityFeeders]=useState([]);
+ const [activityFocus, setActivityFocus]=useState(null);
  const [mapLoaded, setMapLoaded]=useState(false);
  const [showIncidents, setShowIncidents]=useState(false);
  const pendingCamera = useRef(null);
@@ -82,8 +83,14 @@ function RunWorkspace({simulation, startingTitle}) {
  const feeder = feederMap.features.find(feature => feature.properties.id === feederId);
  const feederState = sections.find(state => state.id === feederId);
  const activityOpen = tab === 'activity';
+ const activityFeeders = activityFocus?.feeders ?? NO_FEEDERS;
+ const selectedOutage = Boolean(activityFocus?.outage);
  const focusedFeeders = useMemo(() => feederMap.features.filter(feature =>
   feature.geometry && activityFeeders.includes(feature.properties.id)), [feederMap, activityFeeders]);
+ const focusedOutage = selectedOutage || sections.some(section => section.cut && activityFeeders.includes(section.id));
+ const focusActivityFeeders = useCallback((feeders, outage = false) => {
+  setActivityFocus(feeders.length ? {feeders, outage} : null);
+ }, []);
  selectedRef.current=setSelected;
 
  useLayoutEffect(() => {
@@ -134,10 +141,11 @@ function RunWorkspace({simulation, startingTitle}) {
    m.addSource('feeders',{type:'geojson',data:EMPTY_FEATURES});
    m.addLayer({id:'feeder-fill',type:'fill',source:'feeders',minzoom:8,paint:{
     'fill-color':['match',['get','grid_status'],'cut','#c32b51','protected','#7741a2','#008476'],
-    'fill-opacity':['case',['boolean',['get','focused'],false],.55,['==',['get','grid_status'],'cut'],.4,.15],
+    'fill-opacity':['case',['==',['get','grid_status'],'cut'],.58,['boolean',['get','focused'],false],.55,.15],
    }});
    m.addLayer({id:'feeder-outline',type:'line',source:'feeders',minzoom:8,paint:{
-    'line-color':['case',['boolean',['get','focused'],false],'#9fd5ff',['match',['get','grid_status'],'cut','#f56b84','protected','#b994ed','#6bcebb']],
+    'line-color':['case',['any',['==',['get','grid_status'],'cut'],['boolean',['get','outage_event'],false]],'#ff8797',
+     ['boolean',['get','focused'],false],'#9fd5ff',['==',['get','grid_status'],'protected'],'#b994ed','#6bcebb'],
     'line-width':['case',['boolean',['get','focused'],false],4,1.5],
    }});
    m.addLayer({id:'feeder-id',type:'symbol',source:'feeders',minzoom:10,layout:{'text-field':['get','id'],'text-size':11},paint:{
@@ -145,13 +153,13 @@ function RunWorkspace({simulation, startingTitle}) {
    }});
    const label=m.getStyle().layers.find(l=>l.type==='symbol'&&l.layout?.['text-field']);
    if(m.getSource('composite'))m.addLayer({id:'buildings-3d',type:'fill-extrusion',source:'composite','source-layer':'building',minzoom:12,filter:['==','extrude','true'],paint:{'fill-extrusion-color':['step',['coalesce',['get','height'],5],'#54cfad',12,'#ff987f',25,'#68b6f4',50,'#b491ef',100,'#f8ce63'],'fill-extrusion-height':['coalesce',['get','height'],5],'fill-extrusion-base':['coalesce',['get','min_height'],0],'fill-extrusion-opacity':.96}},label?.id);
-   cities.forEach(c=>{const el=document.createElement('button');el.className='city-node';el.setAttribute('aria-label','Explore '+c.name);el.title=c.name;el.onclick=()=>{searchMarker.current?.remove();searchMarker.current=null;setSearchReset(value=>value+1);setFeederId(null);setActivityFeeders([]);const r=regions.find(r=>r.city===c.name);setSelected(r||null);m.flyTo({center:c.coordinates,zoom:15.2,pitch:52,duration:1800});};new mapboxgl.Marker({element:el}).setLngLat(c.coordinates).addTo(m);});
+   cities.forEach(c=>{const el=document.createElement('button');el.className='city-node';el.setAttribute('aria-label','Explore '+c.name);el.title=c.name;el.onclick=()=>{searchMarker.current?.remove();searchMarker.current=null;setSearchReset(value=>value+1);setFeederId(null);setActivityFocus(null);const r=regions.find(r=>r.city===c.name);setSelected(r||null);m.flyTo({center:c.coordinates,zoom:15.2,pitch:52,duration:1800});};new mapboxgl.Marker({element:el}).setLngLat(c.coordinates).addTo(m);});
    m.on('click','zone-fill',e=>{
     if(m.queryRenderedFeatures(e.point,{layers:['feeder-fill']}).length)return;
     const r=regions.find(r=>r.id===e.features[0].properties.id);
-    selectedRef.current(r);setFeederId(null);setActivityFeeders([]);
+    selectedRef.current(r);setFeederId(null);setActivityFocus(null);
    });
-   m.on('click','feeder-fill',e=>{setFeederId(e.features[0].properties.id);selectedRef.current(null);setActivityFeeders([]);});
+   m.on('click','feeder-fill',e=>{setFeederId(e.features[0].properties.id);selectedRef.current(null);setActivityFocus(null);});
    m.on('mouseenter','zone-fill',()=>m.getCanvas().style.cursor='pointer');m.on('mouseleave','zone-fill',()=>m.getCanvas().style.cursor='');
    pendingCamera.current?.(m);
    pendingCamera.current=null;
@@ -173,9 +181,11 @@ function RunWorkspace({simulation, startingTitle}) {
    const {id, protected: isProtected} = feature.properties;
    const state = states.get(id);
    const gridStatus = state?.cut ? 'cut' : (state?.protected ?? isProtected) ? 'protected' : 'normal';
-   return {...feature, properties: {...feature.properties, grid_status:gridStatus, focused:id === feederId || activityFeeders.includes(id)}};
+   const eventTarget = activityFeeders.includes(id);
+   return {...feature, properties: {...feature.properties, grid_status:gridStatus,
+    focused:id === feederId || eventTarget, outage_event:eventTarget && selectedOutage}};
   })});
- }, [mapLoaded, feederMap, sections, feederId, activityFeeders]);
+ }, [mapLoaded, feederMap, sections, feederId, activityFeeders, selectedOutage]);
 
  useEffect(() => {
   if (!mapLoaded || !focusedFeeders.length) return;
@@ -205,10 +215,10 @@ function RunWorkspace({simulation, startingTitle}) {
   else pendingCamera.current = move;
  }
 
- const home=()=>{setSelected(null);setFeederId(null);setActivityFeeders([]);clearSearchMarker();setSearchReset(value=>value+1);moveCamera(m=>m.flyTo({center:[-84.4,48.3],zoom:5.1,pitch:is3d?35:0,bearing:-10,duration:1500}))};
- const focus=r=>{setSelected(r);setFeederId(null);setActivityFeeders([]);clearSearchMarker();setSearchReset(value=>value+1);moveCamera(m=>m.flyTo({center:r.center,zoom:r.id==='gta'?10.5:7.5,pitch:is3d?45:0,duration:1600}))};
+ const home=()=>{setSelected(null);setFeederId(null);setActivityFocus(null);clearSearchMarker();setSearchReset(value=>value+1);moveCamera(m=>m.flyTo({center:[-84.4,48.3],zoom:5.1,pitch:is3d?35:0,bearing:-10,duration:1500}))};
+ const focus=r=>{setSelected(r);setFeederId(null);setActivityFocus(null);clearSearchMarker();setSearchReset(value=>value+1);moveCamera(m=>m.flyTo({center:r.center,zoom:r.id==='gta'?10.5:7.5,pitch:is3d?45:0,duration:1600}))};
  function openTab(next) {
-  if (next !== 'activity') setActivityFeeders([]);
+  if (next !== 'activity') setActivityFocus(null);
   setTab(next);
  }
  const explorePlace=place=>{
@@ -243,7 +253,7 @@ function RunWorkspace({simulation, startingTitle}) {
  </header>
  <div className={activityOpen?'workspace activity-open':'workspace'}>
  {activityOpen&&<AgentActivity key={simulation.runId || 'idle'} simulation={simulation} formatTime={ts=>scenarioClock.format(new Date(ts))}
-  onClose={()=>openTab('none')} onSections={setActivityFeeders} startingTitle={startingTitle}/>}
+  onClose={()=>openTab('none')} onSections={focusActivityFeeders} startingTitle={startingTitle}/>}
  <section className="canvas" aria-label="Ontario map"><div className="map" ref={container}/>{error&&<div className="map-error"><Globe size={28}/><h2>Connect your Ontario map</h2><p>{error}</p><code>VITE_MAPBOX_TOKEN=pk.…</code></div>}
  <div className="topbar">
   <div className="clock">
@@ -273,7 +283,7 @@ function RunWorkspace({simulation, startingTitle}) {
    ['Simulated Toronto feeders',showFeeders,setShowFeeders], ['Coordinate grid',showGrid,setShowGrid],
   ].map(([name,visible,toggle])=><label key={name}><input type="checkbox" checked={visible} onChange={e=>toggle(e.target.checked)}/>{name}</label>)}
   {showLines && <p className="layer-caption">Teal · Hydro line<br/>Blue · Submerged hydro line</p>}
-  {showFeeders && <p className="layer-caption">Purple · Protected feeder<br/>Red · Feeder switched off<br/>Blue outline · Selected feeder</p>}
+  {showFeeders && <p className="layer-caption">Purple fill · Protected feeder<br/>Red fill · Feeder switched off<br/>Red outline · Outage<br/>Blue outline · Selected feeder</p>}
   {(lineError || feederError) && <p className="layer-caption" role="status">{[lineError, feederError].filter(Boolean).join(' ')}</p>}
   <a href={ONTARIO_LINES} target="_blank" rel="noreferrer">Ontario Utility Line data</a>
  </div>}
@@ -303,9 +313,10 @@ function RunWorkspace({simulation, startingTitle}) {
   {feederState?.cut && <div className="status">{feederState.source === 'agent' ? 'Agent switched this feeder off' : 'Feeder switched off'}</div>}
   {feeder.properties.protected && <p>Protected feeder</p>}
  </aside>}
- {mapLoaded && showFeeders && focusedFeeders.length > 0 && <div className="event-map-focus" role="status"
+ {mapLoaded && showFeeders && focusedFeeders.length > 0 && <div className="event-map-focus" role="status" data-alert={focusedOutage ? 'true' : undefined}
   title={focusedFeeders.map(feature => feature.properties.id).join(', ')}>
   <MapPin size={14} aria-hidden="true"/>
+  {selectedOutage && 'Outage event · '}
   {focusedFeeders.length === 1 ? `${focusedFeeders[0].properties.id} highlighted` : `${focusedFeeders.length} feeders highlighted`}
  </div>}
  <div className="map-controls"><button aria-label="Zoom in" onClick={()=>map.current?.zoomIn()}><Plus size={18}/></button><button aria-label="Zoom out" onClick={()=>map.current?.zoomOut()}><Minus size={18}/></button><button aria-label="Recenter Ontario" onClick={home}><LocateFixed size={18}/></button><button className={is3d?'active':''} aria-label="Toggle 3D" onClick={()=>{set3d(!is3d);map.current?.easeTo({pitch:is3d?0:50,duration:700})}}><Box size={18}/></button></div>
@@ -316,7 +327,7 @@ function RunWorkspace({simulation, startingTitle}) {
   </button>}
   <div className="dock-divider"/>
   <span className="dock-stat"><b>{run?.demand_mw?.toLocaleString() ?? '—'}</b> simulated MW demand</span>
-  <span className="dock-stat"><b>{loss?.toLocaleString() ?? '—'}</b> MW lost</span>
+  <span className="dock-stat" data-alert={loss > 0 ? 'true' : undefined}><b>{loss?.toLocaleString() ?? '—'}</b> MW lost</span>
   {simulation.live && <div className="incident-controls" onKeyDown={event => {if (event.key === 'Escape') setShowIncidents(false);}}>
    <button className="inject" disabled={!simulation.canInject} aria-expanded={showIncidents} onClick={()=>setShowIncidents(!showIncidents)}><Zap size={15}/> Inject event</button>
    {showIncidents && <section className="incident-menu" aria-label="Available events">

@@ -20,6 +20,24 @@ function feederIds(...ids) {
   return [...new Set(ids.flat().filter(id => typeof id === 'string' && id.length))];
 }
 
+export function isFeederOutage(entry, action) {
+  const payload = entry?.payload;
+  return ['uncontrolled_trip', 'baseline_outage'].includes(payload?.kind) ||
+    (entry?.type === 'execution_verified' && action === 'feeder_outage' && payload?.verification?.applied > 0);
+}
+
+export function eventAlert(entry, action) {
+  const payload = entry.payload || {};
+  if (isFeederOutage(entry, action)) return 'Outage';
+  if (entry.type === 'contingency' && payload.kind !== 'contingency_restored') return 'Supply loss';
+  if (entry.type === 'execution_failed') return 'Execution failure';
+  if (payload.verdict === 'deny') return 'Policy block';
+  if (entry.type === 'approval_decided' && payload.status === 'denied') return 'Approval denied';
+  if (entry.type === 'halt') return 'Agent halt';
+  if (entry.type === 'message_in' && payload.scripted && payload.trust === 'untrusted') return 'Untrusted test message';
+  return null;
+}
+
 export function eventFeeders(entry, proposal, card, plan) {
   if (!entry) return [];
   const payload = entry.payload || {};
@@ -47,6 +65,8 @@ export function eventTitle(entry, actionType) {
     case 'execution_sent': return 'Command sent';
     case 'execution_verified': return 'Action verified';
     case 'execution_failed': return 'Execution failed';
+    case 'halt': return 'Agents halted';
+    case 'resume': return 'Agents resumed';
     case 'contingency': return {generator_trip: 'Generator tripped', intertie_loss: 'Intertie supply interrupted', contingency_restored: 'Supply restored'}[payload.kind] || 'Grid contingency';
     case 'message_in': return 'Resident or business replied';
     case 'message_out': return 'Message sent';

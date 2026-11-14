@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {ArrowUpRight, ChevronDown, MapPin, X} from 'lucide-react';
-import {actions, actorName, eventDescription, eventFeeders, eventTitle, formatMw, verdicts} from './activity-data.js';
+import {actions, actorName, eventAlert, eventDescription, eventFeeders, eventTitle, formatMw, isFeederOutage, verdicts} from './activity-data.js';
 import {simulationApi} from './simulation-api.js';
 import PolicyReview, {PolicyList} from './PolicyReview.jsx';
 import ActionTrace from './ActionTrace.jsx';
@@ -24,7 +24,7 @@ function matches(entry, filter) {
   }
 }
 
-function Details({entry, card, plan, error, loading, feeders, onSections, trail, formatTime}) {
+function Details({entry, card, plan, error, loading, feeders, outage, onSections, trail, formatTime}) {
   const payload = entry.payload || {};
   const decision = card?.decision;
   const execution = card?.execution;
@@ -81,7 +81,7 @@ function Details({entry, card, plan, error, loading, feeders, onSections, trail,
       <time dateTime={event.sim_ts}>{formatTime(event.sim_ts)}</time>
     </li>)}</ol></div>}
     {feeders.length > 0 && <div><h3>{entry.refs?.request_id ? 'Targeted simulated feeders' : 'Simulated feeders'}</h3>
-      <button className="event-link" onClick={() => onSections(feeders)}>
+      <button className="event-link" onClick={() => onSections(feeders, outage)}>
         <MapPin size={14}/> Show {feeders.length === 1 ? feeders[0] : `${feeders.length} feeders`} on map
       </button>
       {feeders.length > 1 && <p>{feeders.join(', ')}</p>}</div>}
@@ -126,10 +126,11 @@ export default function AgentActivity({simulation, formatTime, onClose, onSectio
   const trail = currentDetail?.card?.decision_path || (requestId ? events.filter(entry => entry.refs?.request_id === requestId) : []);
   const feeders = eventFeeders(open, requests.get(requestId), currentDetail?.card, currentDetail?.plan);
   const sectionKey = feeders.join(',');
+  const outage = isFeederOutage(open, open?.payload?.action_type || requests.get(requestId)?.action_type || currentDetail?.card?.action_type);
 
   useEffect(() => {
-    onSections(sectionKey ? sectionKey.split(',') : []);
-  }, [detailKey, sectionKey, onSections]);
+    onSections(sectionKey ? sectionKey.split(',') : [], outage);
+  }, [detailKey, sectionKey, outage, onSections]);
 
   return <aside className="activity-workspace" aria-label="Agent activity">
     <div className="activity-header">
@@ -137,7 +138,9 @@ export default function AgentActivity({simulation, formatTime, onClose, onSectio
         <button aria-label="Close activity" onClick={onClose}><X size={19}/></button></div>
       {run && <div className="run-balance" aria-label="Simulated power balance">
         {[['Demand', run.demand_mw], ['Supply', run.supply_mw], ['Shortfall', run.shortfall_mw]].map(([label, value]) =>
-          <div key={label}><span>{label}</span><strong>{formatMw(value)} <small>MW</small></strong></div>)}
+          <div key={label} data-alert={label === 'Shortfall' && value > 0 ? 'true' : undefined}>
+            <span>{label}</span><strong>{formatMw(value)} <small>MW</small></strong>
+          </div>)}
       </div>}
       <nav className="activity-filters" aria-label="Filter events">
         {filters.map(([value, label]) => <button key={value} aria-pressed={filter === value}
@@ -154,16 +157,19 @@ export default function AgentActivity({simulation, formatTime, onClose, onSectio
         </article>)}
       {visible.map(entry => {
         const payload = entry.payload || {};
-        const action = payload.action_type || requests.get(entry.refs?.request_id)?.action_type;
         const isOpen = expanded === entry.seq;
-        return <article className="activity-event" key={entry.seq} data-stage={entry.type} data-verdict={payload.verdict}>
+        const action = payload.action_type || requests.get(entry.refs?.request_id)?.action_type ||
+          (isOpen ? currentDetail?.card?.action_type : undefined);
+        const alert = eventAlert(entry, action);
+        return <article className="activity-event" key={entry.seq} data-stage={entry.type} data-verdict={payload.verdict}
+          data-alert={alert ? 'true' : undefined}>
           <button className="event-toggle" aria-expanded={isOpen} onClick={() => setExpanded(isOpen ? null : entry.seq)}>
             <span className="event-indicator"/>
-            <span className="event-text"><span className="event-meta">{actorName(entry.actor)}</span>
+            <span className="event-text"><span className="event-meta">{alert && <b className="event-alert-label">{alert} · </b>}{actorName(entry.actor)}</span>
             <strong>{eventTitle(entry, action)}</strong><span className="event-summary">{action && entry.type !== 'request_proposed' && <b>{actions[action]} · </b>}{eventDescription(entry)}</span></span>
             <span className="event-tail"><time dateTime={entry.sim_ts}>{formatTime(entry.sim_ts)}</time><ChevronDown size={16}/></span>
           </button>
-          {isOpen && <Details entry={entry} feeders={feeders} onSections={onSections} card={currentDetail?.card}
+          {isOpen && <Details entry={entry} feeders={feeders} outage={outage} onSections={onSections} card={currentDetail?.card}
             plan={currentDetail?.plan} error={currentDetail?.error} trail={trail} formatTime={formatTime}
             loading={Boolean((requestId || planVersion != null) && !currentDetail)}/>}
         </article>;

@@ -82,6 +82,16 @@
 .app .event-toggle:hover,.app .event-toggle[aria-expanded="true"],.app .agent-tags>span{background:var(--terminal-raised)}
 .app .event-summary,.app .event-meta,.app .event-tail,.app .event-details,.app .activity-title small,.app .activity-filters button{color:var(--terminal-muted)}
 .app .event-indicator{background:var(--terminal-green)}
+.app .activity-event[data-alert="true"] .event-toggle{background:#291b20;box-shadow:inset 3px 0 var(--terminal-red)}
+.app .activity-event[data-alert="true"] .event-toggle:is(:hover,[aria-expanded="true"]){background:#39232a}
+.app .activity-event[data-alert="true"] .event-indicator{background:var(--terminal-red)}
+.app .activity-event[data-alert="true"] :is(.event-alert-label,.event-text>strong),
+.app .run-balance [data-alert="true"] :is(strong,small),
+.app .dock-stat[data-alert="true"],.app .dock-stat[data-alert="true"] b,
+.app .event-map-focus[data-alert="true"]{color:var(--terminal-red)}
+.app .dock-stat[data-alert="true"]{display:inline}
+.app .bottom-dock:has(.dock-stat[data-alert="true"]){max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:center;gap:8px}
+.app .event-map-focus[data-alert="true"]{border-color:var(--terminal-red)}
 .app .activity-filters button[aria-pressed="true"],.app .event-link,.app .activity-footer a{color:var(--terminal-green);border-color:var(--terminal-green)}
 .app .run-balance>div{border-radius:3px}
 .policy-review{padding:18px 20px;color:var(--terminal-text)}

@@ -7,7 +7,7 @@ const VISIBLE_ENTRIES = 60;
 const ACTION_EVENTS = new Set([
   'plan_created', 'replan_triggered', 'request_proposed', 'decision', 'approval_requested',
   'approval_decided', 'execution_sent', 'execution_verified', 'execution_failed', 'contingency',
-  'message_in', 'message_out',
+  'message_in', 'message_out', 'halt', 'resume',
 ]);
 
 export function useSimulation() {

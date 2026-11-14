@@ -241,7 +241,8 @@ async def _finalize(world: World, exe: dict[str, Any], status: str, ver: Verific
             "plan_version": req.get("plan_version"),
         },
         payload={"status": status, "verification": ver.model_dump(), "command_id": exe.get("command_id"),
-                 "system": system, "undo_of": undo_of},
+                 "system": system, "undo_of": undo_of, "action_type": exe.get("action_type") or req.get("action_type"),
+                 "section_id": (req.get("targets") or {}).get("section_id")},
         langsmith_run_id=req.get("langsmith_run_id"),
     )
     return Execution.model_validate(exe)
