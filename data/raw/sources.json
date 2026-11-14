@@ -1,0 +1,82 @@
+[
+  {
+    "name": "toronto_neighbourhoods",
+    "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/fc443770-ef0a-4025-9c2c-2cb558bfab00/resource/0719053b-28b7-48ea-b863-068823a93aaa/download/neighbourhoods-4326.geojson",
+    "license": "Open Government Licence \u2013 Toronto",
+    "file": "neighbourhoods.geojson",
+    "retrieved_at": "2026-11-14T20:46:59+00:00",
+    "ok": true,
+    "note": "",
+    "bytes": 2141269
+  },
+  {
+    "name": "toronto_neighbourhood_profiles_2021",
+    "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/6e19a90f-971c-46b3-852c-0c48c436d1fc/resource/19d4a806-7385-4889-acf2-256f1e079060/download/nbhd_2021_census_profile_full_158model.xlsx",
+    "license": "Open Government Licence \u2013 Toronto",
+    "file": "neighbourhood_profiles_2021.xlsx",
+    "retrieved_at": "2026-11-14T20:46:59+00:00",
+    "ok": true,
+    "note": "",
+    "bytes": 1763175
+  },
+  {
+    "name": "toronto_heat_relief_network",
+    "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/4aab06c4-9689-4e2c-9476-18ffee312640/resource/f0d66bc3-16cb-4491-97af-0fae10913666/download/air-conditioned-and-cool-spaces-4326.geojson",
+    "license": "Open Government Licence \u2013 Toronto",
+    "file": "heat_relief_network.geojson",
+    "retrieved_at": "2026-11-14T20:46:59+00:00",
+    "ok": true,
+    "note": "",
+    "bytes": 291947
+  },
+  {
+    "name": "eccc_climate_hourly",
+    "url": "https://api.weather.gc.ca/collections/climate-hourly/items?bbox=-79.70,43.58,-79.20,43.86&datetime=2025-06-22T00:00:00Z/2025-06-26T23:59:59Z&limit=10000&f=json",
+    "license": "Open Government Licence \u2013 Canada (ECCC)",
+    "file": "eccc_hourly_2025-06-22_26.json",
+    "retrieved_at": "2026-11-14T20:46:59+00:00",
+    "ok": true,
+    "note": "station TORONTO INTL A (120 temperature rows)",
+    "bytes": 367281
+  },
+  {
+    "name": "ieso_hourly_demand",
+    "url": "https://reports-public.ieso.ca/public/Demand/PUB_Demand_2025.csv",
+    "license": "IESO public reports (attribution)",
+    "file": "ieso_demand_2025-06-22_26.csv",
+    "retrieved_at": "2026-11-14T20:46:59+00:00",
+    "ok": true,
+    "note": "extracted 2025-06-22..26 (hour ending, EST)",
+    "bytes": 3235
+  },
+  {
+    "name": "ieso_hourly_zonal_demand",
+    "url": "https://reports-public.ieso.ca/public/DemandZonal/PUB_DemandZonal_2025.csv",
+    "license": "IESO public reports (attribution)",
+    "file": "ieso_zonal_demand_2025-06-23_24.csv",
+    "retrieved_at": "2026-11-14T20:46:59+00:00",
+    "ok": true,
+    "note": "June 23\u201324, 2025 (hour ending, EST)",
+    "bytes": 3829
+  },
+  {
+    "name": "ieso_zonal_map",
+    "url": "https://www.google.com/maps/d/kml?mid=zQEHqto-h7Ww.kk9O7iElA_xo&forcekml=1",
+    "license": "IESO public reports (attribution)",
+    "file": "ieso_electrical_zones.kml",
+    "retrieved_at": "2026-11-14T20:46:59+00:00",
+    "ok": true,
+    "note": "KML export linked by the IESO Zonal Map",
+    "bytes": 28489
+  },
+  {
+    "name": "ontario_hydro_lines",
+    "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open05/MapServer/11/query",
+    "license": "Open Government Licence \u2013 Ontario",
+    "file": "ontario_hydro_lines.geojson",
+    "retrieved_at": "2026-11-14T20:46:59+00:00",
+    "ok": true,
+    "note": "2019 hydro line segments",
+    "bytes": 4908020
+  }
+]

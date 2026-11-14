@@ -1,46 +1,50 @@
-# Cooldown · Ontario
+# GridLock · Ontario
 
-Standalone React + Vite + Mapbox GL JS source. No Sites dependency or hosting configuration.
+React, Vite, and Mapbox GL JS map for the GridLock heatwave simulation.
 
 ## Run
 
-Requires Node.js 20.19+ or 22.12+.
+Requires Node.js 20.19+ or 22.12+. Follow the [backend setup](../README.md#run-it) to start FastAPI and initialize the simulation world in MongoDB.
 
 ```sh
-npm install
+cp .env.example .env.local
+npm ci
 npm run dev
 ```
 
-Before starting the app, copy `.env.example` to `.env.local` and set `VITE_MAPBOX_TOKEN` to your public Mapbox token. `.env.local` is ignored by Git and is not included in a fresh clone. Open the URL printed by Vite. Vite intentionally exposes this public token in the browser. Restrict the token's allowed URLs to your local and deployment domains through Mapbox.
+Before starting Vite, set `VITE_MAPBOX_TOKEN` in `.env.local` to your public Mapbox token. The app uses `VITE_API_URL` for FastAPI (default `http://localhost:8000`) and `VITE_CONSOLE_URL` for links to the Next.js run console (default `http://localhost:3000`). Open the URL printed by Vite.
 
 ```sh
 npm run build
 npm run preview
 ```
 
-Deploy the resulting `dist/` folder to your preferred static host. Set `VITE_MAPBOX_TOKEN` before building in CI.
+For a hosted build, set the `VITE_*` variables before building and allow the site's origin in FastAPI's CORS settings. Restrict the Mapbox token to the origins that serve the map.
 
 ## Interface
 
-- Light street map with translucent pastel operating zones, prominent coordinate grid and connecting routes.
-- Ontario-wide overview includes Northwest, Far North, Northeast, Eastern Ontario, Central Ontario, Greater Toronto, Southwest and Niagara.
-- Select a region to view its illustrative readings. “Explore city in 3D” zooms to buildings; province-scale views naturally do not show individual buildings.
+- Start from an empty scenario prompt or choose the built-in Toronto heatwave. Custom scenarios show their assumptions before you run them.
+- Light street map with the ten published IESO electrical zones and a coordinate grid.
+- Select a zone to view the reported demand for June 24, 2025, initially for 12:00–13:00 Toronto time. During a run, the report follows the simulation hour. The Toronto panel also shows recorded weather and the household estimates summed from the city's 2021 neighbourhood profiles.
+- Use the zone panel’s 3D button to see buildings at street scale.
 - City dots zoom directly into the city. All Ontario resets the camera.
 - Search cities, neighborhoods, and operating regions from the map toolbar. Local city/region suggestions work without a lookup; additional Ontario places use Mapbox Geocoding. Arrow keys browse suggestions, Enter explores, and Escape closes the list.
 - 3D buildings use mint, coral, blue, lavender, and gold based on building height. Search a city to see the colours at street scale.
-- Layers toggle zones, coordinate grid and connecting routes.
-- Start/pause the simulated clock, inject a generator-loss event, inspect local activity, and reset.
+- Layers toggle electrical zones, Ontario hydro lines, the coordinate grid, and simulated Toronto feeders. Select a feeder to inspect its simulated breaker and load.
+- Start, pause, and resume the governed Toronto simulation, inject a generator trip, and view recent MongoDB ledger entries. Reloading the page reopens the run in the URL.
+- **Reset** pauses an active run and returns to the Ontario overview. Its ledger remains available in the run console.
+- Expand a ledger entry for the decision and execution flow, sandbox command parameters, targeted feeders, and verified effects. Use **Inject event** during a run to trigger a generator trip, a temporary intertie loss, or an untrusted resident message.
+- Open the Next.js run console for audit, halt, and rollback.
 
 ## Source
 
-`src/main.jsx`: React components, map lifecycle, layers and browser-local scenario state.
-`src/data.js`: illustrative zone polygons, city coordinates, connecting lines and readings.
+`src/main.jsx`: React components, map lifecycle, and layers.
+`src/useSimulation.js` and `src/simulation-api.js`: run controls, clock, and ledger updates from FastAPI.
+`src/data.js`: IESO zone colours and map camera targets. FastAPI serves the zone boundaries and observations at `/world/observations`.
 `src/style.css`: responsive interface styles.
 
 `src/PlaceSearch.jsx` and `src/place-search.js`: accessible place search, Ontario filtering, and map search results. Run search logic checks with `node --test src/place-search.test.js`.
 
 ## Scope
 
-Mapbox loads real base geography. Coverage polygons are coarse illustrative operating areas, not official province, municipal or utility boundaries. Routes are fictional intercity connections, not power-line infrastructure. Readings, household counts and activity are synthetic. The Far North polygon is illustrative coverage rather than a precise Ontario outline. The reference influenced the light map and colored polygon treatment; its assets/code are not included.
-
-This is a frontend prototype. There is no MongoDB backend, agent execution, actual electricity control, server-enforced policy gate or persistent audit storage. Connect real API responses and authenticated actions before presenting those as implemented. WebGL and an internet connection are required for the real map.
+Mapbox supplies the base geography and requires WebGL and internet access. The City of Toronto census count covers municipal Toronto. The IESO demand reading covers the wider electrical zone. The backend models a fictional Toronto heatwave with synthetic households, feeder sections, and equipment, and stores the simulation's audit ledger in MongoDB.
