@@ -14,9 +14,9 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cooldown — governed agents for a heat wave",
+  title: "Cooldown — custom grid scenarios with governed agents",
   description:
-    "Governed AI agents keep Toronto's power on through a heat wave. Every action is identity-bound, policy-checked, ledgered in MongoDB Atlas, and can be halted or rolled back.",
+    "Describe any grid stress test in plain language, let a Scenario Designer agent build the simulation, and audit every governed action in MongoDB Atlas.",
 };
 
 export const viewport: Viewport = {

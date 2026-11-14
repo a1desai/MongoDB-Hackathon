@@ -5,6 +5,7 @@ import type {
   ActionRequest,
   Approval,
   AuditAnswer,
+  GeneratedScenario,
   HumanId,
   LedgerEntry,
   MetricsSummary,
@@ -85,11 +86,22 @@ function asList<T>(v: unknown, ...keys: string[]): T[] {
 const enc = encodeURIComponent;
 
 export const api = {
+  generateScenario: (prompt: string, by: HumanId = "human:operator") =>
+    post<{ scenario_id: string; scenario: GeneratedScenario }>(
+      "/scenarios/generate",
+      { prompt, by },
+      60000,
+    ),
   /** Governed runs also start a fast headless baseline (same seed) so /compare has numbers. */
-  createRun: (mode: "governed" | "baseline", seed = 42, by: HumanId = "human:operator") =>
+  createRun: (
+    mode: "governed" | "baseline",
+    seed = 42,
+    by: HumanId = "human:operator",
+    scenarioId = SCENARIO_ID,
+  ) =>
     post<{ run_id: string; baseline_run_id?: string }>(
       "/runs",
-      { scenario_id: SCENARIO_ID, mode, seed, by, with_baseline: mode === "governed" },
+      { scenario_id: scenarioId, mode, seed, by, with_baseline: mode === "governed" },
       60000,
     ),
   getRun: (runId: string) => get<Run>(`/runs/${enc(runId)}`),

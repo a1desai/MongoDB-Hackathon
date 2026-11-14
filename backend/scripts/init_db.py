@@ -204,6 +204,20 @@ VALIDATORS: dict[str, dict[str, Any]] = {
             "households": INT,
         },
     ),
+    dbm.SCENARIOS: schema(
+        ["_id", "id", "title", "sim_start", "sim_end", "target_peak_mw", "supply_mw", "contingencies"],
+        {
+            "_id": STR,
+            "id": STR,
+            "title": STR,
+            "sim_start": STR,
+            "sim_end": STR,
+            "target_peak_mw": NUM,
+            "supply_mw": NUM,
+            "contingencies": ARR,
+            "designer": OBJ,
+        },
+    ),
     # Sensible validators for the rest.
     dbm.FORECASTS: schema(["run_id", "sim_ts"], {"run_id": STR, "sim_ts": STR, "hourly": ARR, "windows": ARR}),
     dbm.AGENT_CONTROL: schema(["halted"], {"halted": BOOL, "scope": STR}),
@@ -220,7 +234,7 @@ VALIDATORS: dict[str, dict[str, Any]] = {
 }
 
 PLAIN = [
-    dbm.SCENARIOS, dbm.COUNTERS, dbm.LLM_CACHE, dbm.RUN_METRICS, dbm.MAP_SNAPSHOTS,
+    dbm.COUNTERS, dbm.LLM_CACHE, dbm.RUN_METRICS, dbm.MAP_SNAPSHOTS,
     dbm.LANGGRAPH_CHECKPOINTS, dbm.LANGGRAPH_WRITES,
     dbm.MOCK_THERMLINK_DEVICES, dbm.MOCK_THERMLINK_BATCHES, dbm.MOCK_CHARGEFLOW_SESSIONS,
     dbm.MOCK_POWERCELL_UNITS, dbm.MOCK_TEXTLINE_OUTBOX, dbm.MOCK_GRIDOPS_SECTIONS,

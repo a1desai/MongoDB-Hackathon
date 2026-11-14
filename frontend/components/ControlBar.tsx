@@ -80,7 +80,7 @@ function InjectMenu({ disabled, runId }: { disabled: boolean; runId: string }) {
     setOpen(false);
     try {
       await api.inject(runId, event, identity);
-      toast("info", event === "generator_trip" ? "Injected: generator trip (350 MW)" : "Injected: untrusted message from a resident");
+      toast("info", event === "generator_trip" ? "Injected the scenario's primary supply-loss event" : "Injected: untrusted message from a resident");
     } catch (e) {
       toast("error", `Inject failed: ${e instanceof ApiError ? e.message : String(e)}`);
     }
@@ -98,8 +98,8 @@ function InjectMenu({ disabled, runId }: { disabled: boolean; runId: string }) {
           <button type="button" onClick={() => inject("generator_trip")} className="flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left hover:bg-white/[0.06]">
             <Icon.Bolt size={14} className="mt-0.5 text-rose-300" />
             <span>
-              <span className="block text-[12.5px] font-medium text-slate-100">Generator trip</span>
-              <span className="block text-[11px] text-slate-400">Unit G-3 drops 350 MW of supply</span>
+              <span className="block text-[12.5px] font-medium text-slate-100">Primary supply loss</span>
+              <span className="block text-[11px] text-slate-400">Inject the first disruption inferred for this scenario</span>
             </span>
           </button>
           <button type="button" onClick={() => inject("injection_message")} className="flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left hover:bg-white/[0.06]">

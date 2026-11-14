@@ -12,6 +12,7 @@ from typing import Any
 import yaml
 
 from ..config import get_settings
+from ..db import SCENARIOS, db
 
 log = logging.getLogger(__name__)
 
@@ -102,6 +103,21 @@ def load_scenario(scenario_id: str) -> dict:
         raise FileNotFoundError(f"scenario {scenario_id!r} not found at {path}")
     sc["id"] = str(sc.get("id") or scenario_id)
     return sc
+
+
+async def resolve_scenario(scenario_id: str) -> dict:
+    """Load a user-generated scenario from Atlas, falling back to the repository YAML template."""
+    try:
+        doc = await db()[SCENARIOS].find_one({"_id": scenario_id})
+    except Exception as exc:  # Atlas errors should still allow the built-in YAML scenario
+        log.warning("scenario lookup in Atlas failed for %s: %s", scenario_id, exc)
+        doc = None
+    if doc is not None:
+        raw = dict(doc)
+        raw.pop("_id", None)
+        raw["id"] = scenario_id
+        return with_defaults(raw)
+    return load_scenario(scenario_id)
 
 
 def public_scenario(scenario: dict[str, Any]) -> dict[str, Any]:

@@ -147,7 +147,7 @@ export default function ComparisonCard() {
   async function startBaseline() {
     setStarting(true);
     try {
-      const r = await api.createRun("baseline", run?.seed ?? 42);
+      const r = await api.createRun("baseline", run?.seed ?? 42, "human:operator", run?.scenario_id);
       window.open(`/run/${r.run_id}`, "_blank");
     } catch (e) {
       toast("error", `Could not start a baseline run: ${e instanceof ApiError ? e.message : String(e)}`);

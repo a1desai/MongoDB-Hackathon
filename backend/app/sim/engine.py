@@ -44,7 +44,7 @@ from ..ids import new_run_id
 from ..models import Run
 from ..timeutil import at, hhmm, sim_iso, wall_now
 from . import clock
-from .scenario import load_scenario, public_scenario
+from .scenario import public_scenario, resolve_scenario
 from .world_state import World
 
 log = logging.getLogger("cooldown.engine")
@@ -135,7 +135,7 @@ class RunEngine:
             raise ValueError(f"mode must be governed or baseline, not {mode!r}")
         s = get_settings()
         seed = int(s.sim_seed if seed is None else seed)
-        scenario = load_scenario(scenario_id)
+        scenario = await resolve_scenario(scenario_id)
         demo = dict(scenario.get("demo") or {})
         if pause_on_planning is not None:
             demo["pause_on_planning"] = bool(pause_on_planning)

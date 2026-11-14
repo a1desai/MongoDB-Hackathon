@@ -242,6 +242,40 @@ export interface Run {
   policy_version?: string | null;
 }
 
+export interface GeneratedScenario {
+  _id: string;
+  id: string;
+  title: string;
+  summary?: string;
+  date?: string;
+  sim_start?: string;
+  sim_end?: string;
+  weather?: {
+    source?: string;
+    profile_c?: Record<string, number>;
+  };
+  target_peak_mw: number;
+  supply_mw: number;
+  supply_schedule_mw?: Record<string, number>;
+  contingencies?: {
+    at: string;
+    type: string;
+    mw: number;
+    label?: string;
+    duration_min?: number;
+  }[];
+  budget_cad?: number;
+  t_safe_c?: number;
+  designer?: {
+    agent?: string;
+    prompt?: string;
+    reasoning?: string;
+    assumptions?: string[];
+    source?: "llm" | "cache" | "fallback" | string;
+    langsmith_run_id?: string | null;
+  };
+}
+
 export interface TickMsg {
   type: "tick";
   sim_ts: string;

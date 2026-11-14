@@ -44,6 +44,7 @@ IDENTITIES: list[Identity] = [
     Identity(_id="human:supervisor", kind="human", display_name="A. Rahman", on_shift=True, scopes=Scopes(read=["*"])),
     Identity(_id="human:auditor", kind="human", display_name="J. Okafor", scopes=Scopes(read=["ledger", "decisions", "approvals", "policy_docs"])),
     _agent("agent:forecaster", "Forecaster", [], ["weather", "feeder_load", "households"]),
+    _agent("agent:scenario_designer", "Scenario Designer", [], ["scenarios", "weather", "policy_docs"]),
     _agent(
         "agent:planner",
         "Planner",

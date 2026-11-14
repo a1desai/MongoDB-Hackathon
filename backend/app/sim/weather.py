@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 
 from ..timeutil import parse_sim
-from . import clock
+from . import clock, profiles
 from .world_state import World
 
 T_MIN_C = 24.0  # synthetic heat-wave curve: min at 05:00
@@ -61,9 +61,16 @@ def cache_from_docs(docs: list[dict[str, Any]]) -> dict[str, list[float]] | None
 
 
 def synthetic_cache(scenario: dict[str, Any], start_h: float = 12.0, end_h: float = 21.5) -> dict[str, list[float]]:
+    designed = (scenario.get("weather") or {}).get("profile_c")
+    profile = profiles.parse_profile(designed) if isinstance(designed, dict) else None
     d = delta_c(scenario)
     minutes = list(np.arange(start_h * 60, end_h * 60 + 0.1, 5.0))
-    return {"minutes": [float(m) for m in minutes], "temps": [round(synthetic_c(m / 60.0, d), 2) for m in minutes]}
+    temps = (
+        [round(profiles.value_at(profile, m / 60.0), 2) for m in minutes]
+        if profile is not None
+        else [round(synthetic_c(m / 60.0, d), 2) for m in minutes]
+    )
+    return {"minutes": [float(m) for m in minutes], "temps": temps}
 
 
 def _cache(world: World) -> dict[str, list[float]]:
