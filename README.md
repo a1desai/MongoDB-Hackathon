@@ -64,7 +64,7 @@ Atlas is the only database: all durable state, decisions, approvals and the ledg
 ## Run it
 
 ```bash
-cp .env.example .env    # fill in MONGODB_URI, OPENAI_API_KEY, NEXT_PUBLIC_MAPBOX_TOKEN, LANGSMITH_API_KEY
+cp .env.example .env    # fill in MONGODB_URI and any LLM or tracing keys you use
 
 cd backend
 uv venv --python 3.12 .venv && uv pip install -r requirements.txt
@@ -73,11 +73,28 @@ uv venv --python 3.12 .venv && uv pip install -r requirements.txt
 .venv/bin/python -m scripts.init_db         # idempotent: collections, validators, indexes, search indexes, identities, policies
 .venv/bin/python -m scripts.seed_memory
 .venv/bin/uvicorn app.main:app --port 8000
-
-cd ../frontend && npm install && npm run dev   # http://localhost:3000
 ```
 
 Without `OPENAI_API_KEY`, every agent uses its deterministic fallback, and the run still completes.
+
+From the repo root, in a second terminal, start the Ontario map on `http://localhost:5173`.
+
+```bash
+cd cooldown-react
+cp .env.example .env.local    # set VITE_MAPBOX_TOKEN to a public Mapbox token
+npm ci
+npm run dev
+```
+
+Use **Start simulation** in the map to create a governed Toronto run. The map shows the run's simulated time, temperature, generator loss, and ledger activity. See the [React app README](cooldown-react/README.md) for setup and controls.
+
+For approvals, audit, and other operator controls, start the Next.js run console in a third terminal. Set `NEXT_PUBLIC_MAPBOX_TOKEN` in `frontend/.env.local` to use its Toronto map. The React app links to the same run from **Run activity** and **Awaiting approval**.
+
+```bash
+cd frontend
+npm ci
+npm run dev    # http://localhost:3000
+```
 
 ## Data sources and licences
 
