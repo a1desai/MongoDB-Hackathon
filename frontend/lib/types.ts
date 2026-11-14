@@ -106,6 +106,7 @@ export interface Decision {
   denied_reasons?: Record<string, number>;
   blast_radius?: BlastRadius;
   policy_version?: string;
+  policy_snapshot?: {_id: string; name: string; description: string; params: Record<string, unknown>}[];
   decided_by?: string;
   untrusted_influence?: boolean;
 }
@@ -229,6 +230,7 @@ export interface LedgerEntry {
 }
 
 export interface Run {
+  injectable_events?: string[];
   _id: string;
   scenario_id?: string;
   mode?: "governed" | "baseline";

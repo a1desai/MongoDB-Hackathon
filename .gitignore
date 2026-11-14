@@ -9,4 +9,8 @@ node_modules/
 data/raw/*
 !data/raw/sources.json
 data/processed/households.json
+data/processed/observations.json
+data/processed/hydro-lines.geojson
+cooldown-react/public/data/
 *.egg-info/
+.env.local

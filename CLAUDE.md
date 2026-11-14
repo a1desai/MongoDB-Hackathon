@@ -1,4 +1,4 @@
-# Cooldown
+# GridLock
 
 Hackathon project (MongoDB "Agents in Context", Toronto, Nov 14 2026; submissions due 17:00 ET; Problem Statement 1, Agents You Can Audit). Governed AI agents keep Toronto's power on through a heat wave, and every action is tied to an identity, checked by a deterministic Policy Gate before it runs, recorded in a hash-chained ledger in Atlas, and can be halted or rolled back.
 

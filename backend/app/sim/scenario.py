@@ -12,6 +12,8 @@ from typing import Any
 import yaml
 
 from ..config import get_settings
+from ..db import SCENARIOS, db
+from ..observations import load_observations
 
 log = logging.getLogger(__name__)
 
@@ -101,7 +103,30 @@ def load_scenario(scenario_id: str) -> dict:
     else:
         raise FileNotFoundError(f"scenario {scenario_id!r} not found at {path}")
     sc["id"] = str(sc.get("id") or scenario_id)
+    calibration = sc.get("calibration") or {}
+    zone = calibration.get("observed_demand_zone")
+    if zone:
+        observations = load_observations()
+        if (sc.get("weather") or {}).get("source") == f"eccc_{observations.get('date')}":
+            hourly = {hour: row[zone] for hour, row in observations.get("demand_mw", {}).items() if zone in row}
+            peak = hourly.get(calibration.get("peak_time", "17:00"))
+            if peak and len(hourly) == 24 and all(mw > 0 for mw in hourly.values()):
+                target = sc["target_peak_mw"] * calibration["commercial_background_share"]
+                calibration["commercial_background_mw"] = {hour: target * mw / peak for hour, mw in hourly.items()}
+                calibration["commercial_background_source"] = observations["demand_source"]
     return sc
+
+
+async def resolve_scenario(scenario_id: str) -> dict:
+    """Use the repository scenario for built-ins and Atlas for prompt designs."""
+    if scenario_id.startswith("scn_"):
+        doc = await db()[SCENARIOS].find_one({"_id": scenario_id}, {"_id": 0})
+        if doc is not None:
+            return with_defaults(doc)
+        raise FileNotFoundError(f"scenario {scenario_id!r} not found")
+    if not scenario_id or not all(c.isascii() and (c.isalnum() or c in "_-") for c in scenario_id):
+        raise FileNotFoundError("invalid scenario ID")
+    return load_scenario(scenario_id)
 
 
 def public_scenario(scenario: dict[str, Any]) -> dict[str, Any]:

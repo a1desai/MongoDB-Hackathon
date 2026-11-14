@@ -345,6 +345,18 @@ function ActionCardImpl({ card, highlight }: { card: Card; highlight?: boolean }
             </span>
           </div>
           {d.rule_results && d.rule_results.length > 0 && <RuleChips rules={d.rule_results} compact />}
+          {d.policy_snapshot && d.policy_snapshot.length > 0 && (
+            <details className="mt-2 text-xs text-emerald-200">
+              <summary className="cursor-pointer">Policy settings recorded with this decision</summary>
+              <ul className="mt-2 space-y-2 text-slate-300">
+                {d.policy_snapshot.map(rule => <li key={rule._id}>
+                  <strong>{rule._id} · {rule.name.replaceAll("_", " ").toLowerCase()}</strong>
+                  <p className="mt-1">{rule.description}</p>
+                  {Object.keys(rule.params).length > 0 && <pre className="mt-1 whitespace-pre-wrap break-words">{JSON.stringify(rule.params, null, 2)}</pre>}
+                </li>)}
+              </ul>
+            </details>
+          )}
           {pendingApproval && (
             <button
               type="button"

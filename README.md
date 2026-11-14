@@ -1,4 +1,4 @@
-# Cooldown
+# GridLock
 
 **Governed AI agents keep Toronto's power on through an extreme heat wave with the least harm, and can prove every decision.**
 
@@ -6,11 +6,11 @@ Every action is tied to an identity, checked against versioned policy *before* i
 
 Built for MongoDB's **Agents in Context** hackathon (Toronto, November 14, 2026), **Problem Statement 1: Agents You Can Audit**.
 
-> In June 2025 Ontario hit its highest demand peak in 12 years. Cooldown replays the 2031 version of that day: a heat wave, a generator trip at 17:40, and a team of agents that has to close the gap without cutting power to the people who can least afford it.
+> In June 2025 Ontario hit its highest demand peak in 12 years. GridLock replays the 2031 version of that day: a heat wave, a generator trip at 17:40, and a team of agents that has to close the gap without cutting power to the people who can least afford it.
 
 ## How it answers Track 1
 
-| Track 1 asks | Cooldown's answer |
+| Track 1 asks | GridLock's answer |
 | --- | --- |
 | Decide what an agent may do, and enforce it *before* the action | Identities with scopes and an acting-for human, versioned policies, and a deterministic Policy Gate (16 rules) that evaluates every action request before the Executor can touch any system |
 | Record what the agent did, why, and under whose authority | Append-only, hash-chained ledger with schema validation. Each entry records the actor, the human it acts for, evidence (marked trusted or untrusted), policy version, per-rule results and the LangSmith trace |
@@ -77,7 +77,7 @@ uv venv --python 3.12 .venv && uv pip install -r requirements.txt
 
 Without `OPENAI_API_KEY`, every agent uses its deterministic fallback, and the run still completes.
 
-From the repo root, in a second terminal, start the Ontario map on `http://localhost:5173`.
+From the repo root, in a second terminal, start the prompt screen on `http://localhost:5173`.
 
 ```bash
 cd cooldown-react
@@ -86,9 +86,15 @@ npm ci
 npm run dev
 ```
 
-Use **Start simulation** in the map to create a governed Toronto run. The map shows the run's simulated time, temperature, generator loss, and ledger activity. See the [React app README](cooldown-react/README.md) for setup and controls.
+Select an electrical zone to see reported IESO demand for June 24, 2025. The Toronto panel also shows the hourly airport temperature and the sum of household estimates in the 2021 neighbourhood profiles. During a run, the observations follow the simulation clock's hour in Toronto. See the [React app README](cooldown-react/README.md) for setup and controls.
 
-For approvals, audit, and other operator controls, start the Next.js run console in a third terminal. Set `NEXT_PUBLIC_MAPBOX_TOKEN` in `frontend/.env.local` to use its Toronto map. The React app links to the same run from **Run activity** and **Awaiting approval**.
+Enter a prompt, select **Generate scenario**, and review the inferred settings before running it. The designer saves custom scenarios in MongoDB and can extract numbers from a prompt without an LLM key. **Toronto heatwave** starts the built-in scenario, which uses the published temperature profile and scales the IESO Toronto-zone demand pattern to the model's commercial load. Rerun `scripts.fetch_data` and `scripts.build_world` on an existing checkout to prepare the map observations and hydro lines.
+
+Open **Agent activity** to inspect the ordered plan, written rationale, policy checks, approvals, and verified relief. Select **Show feeders on map** inside an action to locate its simulated targets beside the published hydro lines.
+
+**Policies** shows the active rule set and its thresholds. The deterministic Policy Gate automatically authorizes eligible actions and restricts partial approvals to eligible targets. Feeder outages, large-impact actions, and other requests that trigger review rules wait for an on-shift supervisor. New decisions store the applied policy settings and version in the audit ledger for later review.
+
+For audit and additional operator controls, start the Next.js run console in a third terminal. Set `NEXT_PUBLIC_MAPBOX_TOKEN` in `frontend/.env.local` to use its Toronto map. The activity panel links to the same run.
 
 ```bash
 cd frontend
@@ -99,10 +105,11 @@ npm run dev    # http://localhost:3000
 ## Data sources and licences
 
 - Toronto neighbourhood boundaries, Neighbourhood Profiles (2021) and the Heat Relief Network: City of Toronto Open Data, [Open Government Licence – Toronto](https://open.toronto.ca/open-data-license/).
-- Hourly weather: Environment and Climate Change Canada, [Open Government Licence – Canada](https://open.canada.ca/en/open-government-licence-canada).
-- Ontario hourly demand (curve shape only): IESO public reports, used with attribution.
+- Hourly weather for June 24, 2025: [Environment and Climate Change Canada](https://api.weather.gc.ca/collections/climate-hourly?lang=en). The simulation interpolates between observations without a temperature offset.
+- Ten zone boundaries and reported hourly demand: [IESO Zonal Map](https://www.ieso.ca/localContent/zonal.map/index.html) and [Hourly Zonal Demand Report](https://reports-public.ieso.ca/public/DemandZonal/). The boundary and demand data are subject to [IESO's terms of use](https://www.ieso.ca/Terms-of-Use).
+- Hydro and submerged hydro line locations: [Ontario Utility Line dataset](https://data.ontario.ca/dataset/utility-line). The simulated feeders have independent geometry and breaker state.
 
-Each download falls back to a synthetic generator if it fails; `data/raw/sources.json` records which sources were used.
+`data/raw/sources.json` records download status. The simulation has fallback inputs for offline use. The map reports missing observations as unavailable.
 
 ## Synthetic assumptions
 

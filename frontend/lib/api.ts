@@ -1,4 +1,4 @@
-/* REST client for the Cooldown backend (PLAN §13). Every call has a timeout and throws
+/* REST client for the GridLock backend (PLAN §13). Every call has a timeout and throws
  * ApiError with a readable message, so the UI can show "backend down" instead of crashing. */
 
 import type {
@@ -96,7 +96,7 @@ export const api = {
   pause: (runId: string, by?: HumanId) => post(`/runs/${enc(runId)}/pause`, by ? { by } : {}),
   resume: (runId: string, by?: HumanId) => post(`/runs/${enc(runId)}/resume`, by ? { by } : {}),
   setSpeed: (runId: string, x: number) => post(`/runs/${enc(runId)}/speed`, { x }),
-  inject: (runId: string, event: "generator_trip" | "injection_message", by?: HumanId) =>
+  inject: (runId: string, event: "generator_trip" | "intertie_loss" | "injection_message", by?: HumanId) =>
     post(`/runs/${enc(runId)}/inject`, by ? { event, by } : { event }),
 
   ledger: async (runId: string, afterSeq = 0) =>

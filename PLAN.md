@@ -1,11 +1,11 @@
-<!-- Text extracted from the team's 'Cooldown — Build Plan' PDF. Tables were flattened during extraction; the content is complete. -->
+<!-- Text extracted from the team's 'GridLock — Build Plan' PDF. Tables were flattened during extraction; the content is complete. -->
 
 
-=== PAGE 1 === Cooldown — Build Plan Governed AI agents keep Toronto's power on through an extreme heat wave with the least harm, and can prove every decision. Every action is tied to an identity, checked against policy before it runs, recorded in an append-only hash-chained ledger in MongoDB Atlas, and can be halted or rolled back.
+=== PAGE 1 === GridLock — Build Plan Governed AI agents keep Toronto's power on through an extreme heat wave with the least harm, and can prove every decision. Every action is tied to an identity, checked against policy before it runs, recorded in an append-only hash-chained ledger in MongoDB Atlas, and can be halted or rolled back.
 ● Event: MongoDB "Agents in Context" Hackathon, Toronto, Sat Nov 14 2026. Submissions due 17:00 .
 ● Track: Problem Statement 1, Agents You Can Audit .
 ● Stack: FastAPI + PyMongo Async + MongoDB Atlas (sandbox) · Voyage AI embeddings + Atlas Vector Search · LangSmith tracing · Next.js + React + Zustand + Mapbox GL.
-● Project name "Cooldown" is a placeholder; rename freely.
+● Project name "GridLock" is a placeholder; rename freely.
 
 0. Ground rules (read first, never break)
 
@@ -38,7 +38,7 @@
 
 11. Build in milestone order (§16). Every milestone ends runnable. Priority tags: P0 must, P1 should, P2 stretch.
 
-1. How this answers Track 1 Track 1 asks Cooldown's answer Decide what an agent may do and enforce it before the action identities (scopes, acting-for human) + versioned policies + deterministic Policy Gate that evaluates every action_request before the Executor can touch any system Record what the agent did, why, and under whose authority Append-only, hash-chained ledger with schema validation. Each entry records actor identity, acting-for human, evidence IDs (marked trusted or untrusted), policy version, per-rule results and the LangSmith run ID Stop or roll back an agent mid-run agent_control kill switch watched by a change stream. Every execution stores an undo command. Rollbacks are themselves gated and logged Real actions across systems Five mock control systems , each with its own API, collection, API key, latency and failure quirks. The Executor uses idempotency keys and verifies "took effect" by reading back
+1. How this answers Track 1 Track 1 asks GridLock's answer Decide what an agent may do and enforce it before the action identities (scopes, acting-for human) + versioned policies + deterministic Policy Gate that evaluates every action_request before the Executor can touch any system Record what the agent did, why, and under whose authority Append-only, hash-chained ledger with schema validation. Each entry records actor identity, acting-for human, evidence IDs (marked trusted or untrusted), policy version, per-rule results and the LangSmith run ID Stop or roll back an agent mid-run agent_control kill switch watched by a change stream. Every execution stores an undo command. Rollbacks are themselves gated and logged Real actions across systems Five mock control systems , each with its own API, collection, API key, latency and failure quirks. The Executor uses idempotency keys and verifies "took effect" by reading back
 
 2. Stack and carried-over design decisions
 === PAGE 3 === None Backend:
@@ -367,7 +367,7 @@
 ● Atlas custom role making the ledger insert-only
 ● EMBED_MODE=auto
 
-17. Demo script (3 min live) and 1-min video 1. 0:00 "In June 2025 Ontario hit its highest demand peak in 12 years. Cooldown is a team of governed AI agents that keeps Toronto's power on in the 2031 version of that day, and can prove every decision." Start the run (golden cache). 2. 0:15 The Forecaster flags 17:00–20:00. The Planner card shows its rationale and cites 2 similar past events (Voyage + Vector Search). Batch card: "Pre-cool 5,200 homes → 5,014 allowed, 186 denied (R04 vulnerable 141, R02 no consent 45)." The map turns blue. 3. 0:45 Negotiator texts go out. A resident replies in the thread, and the data centre counter-offers 15 MW with 30 min notice. Verification shows "94% applied, 6% offline."
+17. Demo script (3 min live) and 1-min video 1. 0:00 "In June 2025 Ontario hit its highest demand peak in 12 years. GridLock is a team of governed AI agents that keeps Toronto's power on in the 2031 version of that day, and can prove every decision." Start the run (golden cache). 2. 0:15 The Forecaster flags 17:00–20:00. The Planner card shows its rationale and cites 2 similar past events (Voyage + Vector Search). Batch card: "Pre-cool 5,200 homes → 5,014 allowed, 186 denied (R04 vulnerable 141, R02 no consent 45)." The map turns blue. 3. 0:45 Negotiator texts go out. A resident replies in the thread, and the data centre counter-offers 15 MW with 30 min notice. Verification shows "94% applied, 6% offline."
 === PAGE 32 === 4. 1:15 Generator trip at 17:40. The Watcher triggers a replan. The injection message arrives (orange untrusted chip). The proposal to cut TOR-S03 again is DENIED (R10) , and the thermostat +4 °C proposal is DENIED (R03) . 5. 1:45 The TOR-S11 outage gets a pre-notification with the nearest cool space (R12), then NEEDS APPROVAL . Switch to Supervisor and approve. The section goes dark, and indoor temperatures rise but stay under T_safe. 6. 2:15 Press HALT AGENTS mid-plan: pending actions freeze. Roll back a battery dispatch. Resume. The Restorer staggers the release, so there's no rebound. 7. 2:35 Auditor: "Why was TOR-S11 cut at 17:58 and who approved it?" It returns a timeline with ledger seqs and rules. Verify ledger ✔ . Then the ComparisonCard vs baseline. 8. 2:55 "LLMs propose, MongoDB-enforced policy decides, and every step is on the record." 1-min video: hook (0:00) → plan + partial-allow batch (0:10) → trip + injection denied (0:22) → outage approval (0:35) → halt and rollback (0:45) → Auditor + Atlas ledger collection view + comparison (0:52) → tagline (0:58). 18. README requirements and submission checklist The README must include:
 ● Pitch and track (Problem Statement 1)
 ● Architecture diagram (Mermaid)

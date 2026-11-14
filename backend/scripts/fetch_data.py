@@ -2,8 +2,8 @@
 
 Every source is tried with short timeouts. The result of each attempt is recorded in
 data/raw/sources.json as {name, url, license, retrieved_at, ok, file, note}. Nothing here ever
-raises: on failure build_world.py uses its synthetic fallback for that source. A raw file left by
-an earlier successful run is kept (and reported ok, note "cached") if a re-download fails.
+raises: missing downloads are reported and the world can still be built. A raw file left by an
+earlier successful run is kept (and reported ok) if a re-download fails.
 
 Run from backend/:  .venv/bin/python -m scripts.fetch_data
 """
@@ -34,6 +34,9 @@ IESO_URLS = [
     "https://reports-public.ieso.ca/public/Demand/PUB_Demand_2025.csv",
     "http://reports.ieso.ca/public/Demand/PUB_Demand_2025.csv",
 ]
+IESO_ZONAL_URL = "https://reports-public.ieso.ca/public/DemandZonal/PUB_DemandZonal_2025.csv"
+IESO_ZONE_MAP_URL = "https://www.google.com/maps/d/kml?mid=zQEHqto-h7Ww.kk9O7iElA_xo&forcekml=1"
+ONTARIO_LINES = "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open05/MapServer/11/query"
 NEIGHBOURHOODS_ALT = (
     "https://gis.toronto.ca/arcgis/rest/services/cot_geospatial26/FeatureServer/71/query"
     "?where=1%3D1&outFields=*&outSR=4326&f=geojson"
@@ -148,6 +151,50 @@ async def fetch_demand(client: httpx.AsyncClient) -> tuple[str, bytes, str]:
     raise last or ValueError("no IESO host reachable")
 
 
+async def fetch_zonal_demand(client: httpx.AsyncClient) -> tuple[str, bytes, str]:
+    response = await client.get(IESO_ZONAL_URL, timeout=BIG_TIMEOUT)
+    response.raise_for_status()
+    rows = list(csv.reader(io.StringIO(response.text)))
+    header = next(row for row in rows if row[:2] == ["Date", "Hour"])
+    # Include the previous day's last EST hour to cover midnight in Toronto (EDT).
+    selected = [row for row in rows if row and "2025-06-23" <= row[0] <= "2025-06-24"]
+    if len(selected) != 48 or "Toronto" not in header:
+        raise ValueError("expected two days of zonal demand and a Toronto column")
+    out = io.StringIO()
+    csv.writer(out).writerows([header, *selected])
+    return IESO_ZONAL_URL, out.getvalue().encode(), "June 23–24, 2025 (hour ending, EST)"
+
+
+async def fetch_zone_map(client: httpx.AsyncClient) -> tuple[str, bytes, str]:
+    response = await client.get(IESO_ZONE_MAP_URL, timeout=BIG_TIMEOUT)
+    response.raise_for_status()
+    if b"IESO Electrical Zones" not in response.content:
+        raise ValueError("missing IESO Electrical Zones layer")
+    return IESO_ZONE_MAP_URL, response.content, "KML export linked by the IESO Zonal Map"
+
+
+async def fetch_hydro_lines(client: httpx.AsyncClient) -> tuple[str, bytes, str]:
+    features = []
+    while True:
+        response = await client.get(ONTARIO_LINES, timeout=BIG_TIMEOUT, params={
+            "where": "CLASS_SUBTYPE_NUM IN (1114,1429)", "outFields": "OGF_ID,CLASS_SUBTYPE",
+            "outSR": 4326, "f": "geojson", "orderByFields": "OBJECTID",
+            "resultOffset": len(features), "resultRecordCount": 1000,
+        })
+        response.raise_for_status()
+        page = response.json()
+        rows = page.get("features") or []
+        if not rows:
+            raise ValueError(f"empty Utility Line page after {len(features)} records")
+        features.extend(rows)
+        if not page.get("exceededTransferLimit"):
+            break
+    if len({feature["properties"]["OGF_ID"] for feature in features}) != len(features):
+        raise ValueError("duplicate Utility Line records")
+    collection = {"type": "FeatureCollection", "features": features}
+    return ONTARIO_LINES, json.dumps(collection, separators=(",", ":")).encode(), f"{len(features)} hydro line segments"
+
+
 SOURCES: list[tuple[str, str, str, str, Callable[[httpx.AsyncClient], Awaitable[tuple[str, bytes, str]]]]] = [
     ("toronto_neighbourhoods", "neighbourhoods.geojson", LICENCE_TORONTO, CKAN + "neighbourhoods", fetch_neighbourhoods),
     ("toronto_neighbourhood_profiles_2021", "neighbourhood_profiles_2021.xlsx", LICENCE_TORONTO,
@@ -156,6 +203,9 @@ SOURCES: list[tuple[str, str, str, str, Callable[[httpx.AsyncClient], Awaitable[
      CKAN + "air-conditioned-and-cool-spaces-heat-relief-network", fetch_cool_spaces),
     ("eccc_climate_hourly", "eccc_hourly_2025-06-22_26.json", LICENCE_CANADA, ECCC_URL, fetch_weather),
     ("ieso_hourly_demand", "ieso_demand_2025-06-22_26.csv", LICENCE_IESO, IESO_URLS[0], fetch_demand),
+    ("ieso_hourly_zonal_demand", "ieso_zonal_demand_2025-06-23_24.csv", LICENCE_IESO, IESO_ZONAL_URL, fetch_zonal_demand),
+    ("ieso_zonal_map", "ieso_electrical_zones.kml", LICENCE_IESO, IESO_ZONE_MAP_URL, fetch_zone_map),
+    ("ontario_hydro_lines", "ontario_hydro_lines.geojson", "Open Government Licence – Ontario", ONTARIO_LINES, fetch_hydro_lines),
 ]
 
 

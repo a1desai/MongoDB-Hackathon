@@ -3,12 +3,10 @@ import {cities, regions} from './data.js';
 const normalize = value => value.trim().toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 export const ONTARIO_BOUNDS = [-95.2, 41.6, -74.3, 56.9];
 
-const cityPlaces = [...cities, ...regions.map(region => ({name: region.city, coordinates: region.center}))]
-  .filter((city, index, all) => all.findIndex(other => other.name === city.name) === index)
-  .map(city => ({id: `city-${city.name}`, name: city.name, center: city.coordinates,
+const cityPlaces = cities.map(city => ({id: `city-${city.name}`, name: city.name, center: city.coordinates,
     kind: 'City', subtitle: 'Ontario, Canada', zoom: 15.2}));
 const regionPlaces = regions.map(region => ({id: `region-${region.id}`, name: region.name,
-  center: region.center, kind: 'Region', subtitle: `${region.city} operating area`,
+  center: region.center, kind: 'Region', subtitle: 'IESO electrical zone',
   regionId: region.id, aliases: region.id === 'gta' ? 'gta greater toronto area' : '',
   zoom: region.id === 'gta' ? 10.5 : 7.5}));
 

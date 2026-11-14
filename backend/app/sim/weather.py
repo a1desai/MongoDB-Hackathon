@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 
 from ..timeutil import parse_sim
-from . import clock
+from . import clock, profiles
 from .world_state import World
 
 T_MIN_C = 24.0  # synthetic heat-wave curve: min at 05:00
@@ -42,7 +42,7 @@ def delta_c(scenario: dict[str, Any]) -> float:
         return 0.0
 
 
-def cache_from_docs(docs: list[dict[str, Any]]) -> dict[str, list[float]] | None:
+def cache_from_docs(docs: list[dict[str, Any]], *, offset_c: float | None = None) -> dict[str, list[float]] | None:
     """Turn weather docs ({ts, temp_c}) into the cached minute/temperature lists."""
     pts: list[tuple[datetime, float]] = []
     for d in docs:
@@ -50,7 +50,15 @@ def cache_from_docs(docs: list[dict[str, Any]]) -> dict[str, list[float]] | None
         if ts is None or temp is None:
             continue
         t = parse_sim(ts) if isinstance(ts, str) else parse_sim(ts.isoformat())
-        pts.append((t, float(temp)))
+        value = float(temp)
+        # Processed rows store the offset used at build time, e.g. eccc_2025-06-24+3.0.
+        source = d.get("source", "")
+        if offset_c is not None and source and "+" in source:
+            try:
+                value += offset_c - float(source.rsplit("+", 1)[1])
+            except ValueError:
+                pass
+        pts.append((t, value))
     if len(pts) < 2:
         return None
     pts.sort(key=lambda p: p[0])
@@ -61,9 +69,11 @@ def cache_from_docs(docs: list[dict[str, Any]]) -> dict[str, list[float]] | None
 
 
 def synthetic_cache(scenario: dict[str, Any], start_h: float = 12.0, end_h: float = 21.5) -> dict[str, list[float]]:
+    profile = profiles.parse_profile((scenario.get("weather") or {}).get("profile_c"))
     d = delta_c(scenario)
     minutes = list(np.arange(start_h * 60, end_h * 60 + 0.1, 5.0))
-    return {"minutes": [float(m) for m in minutes], "temps": [round(synthetic_c(m / 60.0, d), 2) for m in minutes]}
+    temps = [round(profiles.value_at(profile, m / 60.0) if profile else synthetic_c(m / 60.0, d), 2) for m in minutes]
+    return {"minutes": [float(m) for m in minutes], "temps": temps}
 
 
 def _cache(world: World) -> dict[str, list[float]]:

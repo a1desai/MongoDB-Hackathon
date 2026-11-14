@@ -13,6 +13,7 @@ import math
 from collections import Counter
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from shutil import copyfile
 from typing import Any
 
 import numpy as np
@@ -22,8 +23,10 @@ from shapely.geometry import MultiPoint, MultiPolygon, Point, Polygon, box, mapp
 from shapely.geometry.polygon import orient
 from sklearn.cluster import KMeans
 
-from app.config import get_settings
+from app.config import ROOT, get_settings
+from app.governance.identities import seed_policies
 from app.timeutil import TZ, sim_iso
+from .build_observations import build_observations, hydro_lines
 
 SCENARIO_ID = "heatwave_2031"
 N_SECTIONS = 24
@@ -301,8 +304,8 @@ def load_profiles(raw: Path) -> dict[int, dict[str, float]]:
     return out
 
 
-def neighbourhood_attrs(nbhs: list[dict], raw: Path, rng: np.random.Generator) -> bool:
-    """Fills nbh['attrs'] and nbh['income_quintile']; synthetic attributes on any failure."""
+def neighbourhood_attrs(nbhs: list[dict], raw: Path, rng: np.random.Generator) -> tuple[bool, int | None]:
+    """Fill modelling attributes and return the census household total when every count is present."""
     profiles: dict[int, dict] = {}
     ok = True
     try:
@@ -311,9 +314,11 @@ def neighbourhood_attrs(nbhs: list[dict], raw: Path, rng: np.random.Generator) -
         print(f"profiles: synthetic fallback ({e})")
         ok = False
     rows = []
+    census_households = []
     for n in nbhs:
         p = profiles.get(n["code"], {}) if ok else {}
         hh = p.get("households")
+        census_households.append(hh)
         pop = p.get("population")
 
         def frac(key: str) -> float | None:
@@ -352,7 +357,8 @@ def neighbourhood_attrs(nbhs: list[dict], raw: Path, rng: np.random.Generator) -
             "pct_single_detached": round(r["pct_single_detached"], 4), "pct_renters": round(r["pct_renters"], 4),
         }
         n["income_quintile"] = int(q)
-    return ok
+    census_total = sum(int(count) for count in census_households if count is not None)
+    return ok, census_total if ok and None not in census_households else None
 
 
 # ---------------------------------------------------------------- households
@@ -661,8 +667,8 @@ def build_residents(H: dict, featured: list[int], hh_ids: list[str], sec_ids: li
 
 
 # ---------------------------------------------------------------- weather and demand shape
-def eccc_hourly(raw: Path) -> dict[datetime, float] | None:
-    """Local (America/Toronto) hourly temperatures from the best station, or None."""
+def eccc_hourly(raw: Path) -> tuple[str | None, dict[datetime, float]]:
+    """Return the station name and its hourly temperatures in America/Toronto."""
     try:
         feats = json.loads((raw / "eccc_hourly_2025-06-22_26.json").read_text())["features"]
         by_station: dict[str, dict[datetime, float]] = {}
@@ -673,13 +679,13 @@ def eccc_hourly(raw: Path) -> dict[datetime, float] | None:
             t = datetime.fromisoformat(p["UTC_DATE"]).replace(tzinfo=UTC).astimezone(TZ)
             by_station.setdefault(p["STATION_NAME"], {})[t] = float(p["TEMP"])
         if not by_station:
-            return None
+            return None, {}
         best = max(len(v) for v in by_station.values())
         name = "TORONTO INTL A" if len(by_station.get("TORONTO INTL A", {})) == best else max(by_station, key=lambda k: len(by_station[k]))
-        return by_station[name]
+        return name, by_station[name]
     except Exception as e:  # noqa: BLE001
         print(f"weather: synthetic fallback ({e})")
-        return None
+        return None, {}
 
 
 def synthetic_temp(hour: float) -> float:
@@ -691,7 +697,7 @@ def synthetic_temp(hour: float) -> float:
     return 36 - 12 * (1 - math.cos(math.pi * since / 13)) / 2
 
 
-def build_weather(scn: dict, raw: Path) -> tuple[list[dict], bool]:
+def build_weather(scn: dict, obs: dict[datetime, float]) -> tuple[list[dict], bool]:
     """5-minute temperatures from 00:00 on the scenario day to 06:00 the next day (covers the
     12:00-21:30 run plus the Forecaster's 6 h look-ahead)."""
     day = date.fromisoformat(str(scn["date"]))
@@ -700,7 +706,6 @@ def build_weather(scn: dict, raw: Path) -> tuple[list[dict], bool]:
     src = (scn.get("weather") or {}).get("source", "")
     if src.startswith("eccc_"):
         src_day = date.fromisoformat(src.removeprefix("eccc_"))
-    obs = eccc_hourly(raw)
     start = datetime.combine(day, datetime.min.time(), tzinfo=TZ)
     steps = [start + timedelta(minutes=5 * i) for i in range(int(30 * 60 / 5) + 1)]
     ok = False
@@ -835,7 +840,7 @@ def main() -> dict:
     sources = load_sources(raw)
 
     nbhs, nb_ok = load_neighbourhoods(raw, rng)
-    prof_ok = neighbourhood_attrs(nbhs, raw, rng)
+    prof_ok, census_total = neighbourhood_attrs(nbhs, raw, rng)
     H = build_households(nbhs, n_total, rng)
     n = len(H["lon"])
     hh_ids = [f"hh_{i + 1:05d}" for i in range(n)]
@@ -982,9 +987,13 @@ def main() -> dict:
     neighbourhoods = [{"_id": x["id"], "name": x["name"], "code": x["code"], "geometry": geojson(x["geom"]),
                        "attrs": x["attrs"], "income_quintile": x["income_quintile"]} for x in nbhs]
 
-    weather, wx_ok = build_weather(scn, raw)
+    station, temperatures = eccc_hourly(raw)
+    weather, wx_ok = build_weather(scn, temperatures)
     src_day = date.fromisoformat(str((scn.get("weather") or {}).get("source", "eccc_2025-06-24")).removeprefix("eccc_"))
     shape_ = ieso_shape(raw, src_day)
+    households_observed = census_total if nb_ok else None
+    observations = build_observations(raw, temperatures, station, households_observed)
+    lines = hydro_lines(raw)
     calib = calibration_estimate(H, scn, weather)
     scenario_doc = jsonable({**scn, "_id": SCENARIO_ID, "date": str(scn["date"])})
     scenario_doc.setdefault("calibration", {})
@@ -997,7 +1006,10 @@ def main() -> dict:
         "households": n, "seed": seed, "scenario_id": SCENARIO_ID, "bbox": [round(v, 6) for v in (lon0, lat0, lon1, lat1)],
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "sources_ok": {**sources, "neighbourhoods_used": nb_ok, "profiles_used": prof_ok, "cool_spaces_used": cool_ok,
-                       "weather_used": wx_ok, "ieso_shape_used": shape_ is not None},
+                       "weather_used": wx_ok, "ieso_shape_used": shape_ is not None,
+                       "ieso_zonal_demand_used": bool(observations["demand_mw"]),
+                       "ieso_zonal_map_used": bool(observations["zones"]["features"]),
+                       "ontario_hydro_lines_used": bool(lines["features"])},
         "counts": {"neighbourhoods": len(neighbourhoods), "sections": len(sections), "facilities": len(facilities),
                    "designated_cool_spaces": sum(f["designated"] for f in facilities), "archetypes": len(archetypes),
                    "residents": len(residents), "businesses": len(businesses), "weather": len(weather),
@@ -1016,6 +1028,18 @@ def main() -> dict:
     for name, docs in files.items():
         (out_dir / f"{name}.json").write_text(json.dumps(jsonable(docs), separators=(",", ":")))
     (out_dir / "meta.json").write_text(json.dumps(jsonable(meta), indent=2))
+    (out_dir / "observations.json").write_text(json.dumps(observations, separators=(",", ":")))
+    (out_dir / "hydro-lines.geojson").write_text(json.dumps(lines, separators=(",", ":")))
+    if s.data_dir.resolve() == (ROOT / "data").resolve() and (ROOT / "cooldown-react").is_dir():
+        # Include the public layers in local Vite builds and static deployments.
+        public_data = ROOT / "cooldown-react" / "public" / "data"
+        public_data.mkdir(parents=True, exist_ok=True)
+        for filename in ("observations.json", "hydro-lines.geojson"):
+            copyfile(out_dir / filename, public_data / filename)
+        policies, version = seed_policies()
+        (public_data / "policies.json").write_text(json.dumps({
+            "version": version, "rules": [policies[key].to_mongo() for key in sorted(policies)],
+        }, separators=(",", ":")))
 
     c = meta["counts"]
     print(f"households {n}  sections {c['sections']} (protected {len(meta['protected_sections'])}, eligible {len(meta['eligible_sections'])})")

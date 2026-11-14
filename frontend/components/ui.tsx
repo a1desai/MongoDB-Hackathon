@@ -78,7 +78,7 @@ type BtnVariant = "primary" | "ghost" | "danger" | "approve" | "deny" | "subtle"
 
 const BTN: Record<BtnVariant, string> = {
   primary:
-    "bg-cyan-400 text-slate-950 hover:bg-cyan-300 shadow-[0_0_0_1px_rgba(34,211,238,0.5),0_8px_30px_-8px_rgba(34,211,238,0.6)]",
+    "bg-[#8fe4b5] text-[#102017] hover:bg-[#b0f3cc]",
   ghost: "border border-white/12 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:border-white/20",
   subtle: "text-slate-300 hover:bg-white/[0.06] hover:text-white",
   danger:
@@ -100,7 +100,7 @@ export function Button({
       type="button"
       {...rest}
       className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition duration-150 select-none",
+        "inline-flex items-center justify-center gap-1.5 rounded-sm font-medium whitespace-nowrap transition duration-150 select-none",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300",
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
         sz,

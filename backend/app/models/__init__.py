@@ -252,6 +252,7 @@ class Decision(Doc):
     allowed_household_ids: list[str] = []  # the executable subset for partial_allow
     blast_radius: BlastRadius = BlastRadius()
     policy_version: str
+    policy_snapshot: list[dict[str, Any]] | None = None
     decided_by: str = "system:gate"
     untrusted_influence: bool = False
 

@@ -1,4 +1,4 @@
-# Cooldown — build contracts
+# GridLock — build contracts
 
 PLAN.md is the product spec. This file pins what PLAN.md leaves open: who owns which files, and the
 exact interfaces between them, so workstreams can build in parallel without drifting.

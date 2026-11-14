@@ -54,7 +54,7 @@ export default function IntroScreen() {
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-300 to-cyan-600 text-slate-950 shadow-[0_0_30px_-4px_rgba(34,211,238,0.8)]">
           <Icon.Thermo size={18} strokeWidth={2.2} />
         </div>
-        <span className="text-[15px] font-semibold tracking-tight text-white">Cooldown</span>
+        <span className="text-[15px] font-semibold tracking-tight text-white">GridLock</span>
         <span className="ml-auto hidden items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[11px] text-slate-300 backdrop-blur-md sm:flex">
           <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
           Agents You Can Audit · MongoDB Atlas

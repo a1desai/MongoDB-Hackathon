@@ -152,7 +152,10 @@ class Executor:
         if decision.verdict in ("allow", "partial_allow"):
             return
         if decision.verdict == "needs_approval" and request.approval_id:
-            apr = await db()[APPROVALS].find_one({"_id": request.approval_id}, {"status": 1})
+            apr = await db()[APPROVALS].find_one({
+                "_id": request.approval_id, "run_id": request.run_id,
+                "request_id": request.id, "decision_id": decision.id,
+            }, {"status": 1})
             if apr and apr.get("status") == "approved":
                 return
         raise Refused("R01", f"not authorised by the gate (verdict {decision.verdict})", fail_request=True)
@@ -279,7 +282,7 @@ class Executor:
     def _messages(
         self, request: ActionRequest, decision: Decision, world: World, start: str | None, end: str | None
     ) -> list[dict[str, Any]]:
-        allowed = set(decision.allowed_household_ids) if decision.verdict == "partial_allow" else None
+        allowed = set(decision.allowed_household_ids) if decision.verdict == "partial_allow" or decision.allowed_household_ids else None
         if request.messages:
             msgs = [m.model_dump(exclude_none=True) for m in request.messages]
         else:

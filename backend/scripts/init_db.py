@@ -1,4 +1,4 @@
-"""Idempotent Atlas setup for Cooldown. Run from backend/: `.venv/bin/python -m scripts.init_db`.
+"""Idempotent Atlas setup for GridLock. Run from backend/: `.venv/bin/python -m scripts.init_db`.
 
 1. Create (or collMod) every collection with a $jsonSchema validator (validationAction "error").
 2. feeder_load as a time series collection (timeField ts, metaField meta, granularity minutes).
@@ -411,8 +411,10 @@ async def load_static_data() -> dict[str, str]:
         doc["source_file"] = path.name
         scenarios.append(json.loads(json.dumps(doc, default=str)))  # dates -> strings
     if scenarios:
-        ins, _ = await replace_collection(dbm.SCENARIOS, scenarios)
-        out[dbm.SCENARIOS] = f"{ins} loaded"
+        await dbm.db()[dbm.SCENARIOS].bulk_write([
+            ReplaceOne({"_id": doc["_id"]}, doc, upsert=True) for doc in scenarios
+        ])
+        out[dbm.SCENARIOS] = f"{len(scenarios)} built-in scenarios loaded"
     else:
         out[dbm.SCENARIOS] = "skipped (no scenarios/*.yaml)"
 

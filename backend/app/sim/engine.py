@@ -44,7 +44,7 @@ from ..ids import new_run_id
 from ..models import Run
 from ..timeutil import at, hhmm, sim_iso, wall_now
 from . import clock
-from .scenario import load_scenario, public_scenario
+from .scenario import public_scenario, resolve_scenario
 from .world_state import World
 
 log = logging.getLogger("cooldown.engine")
@@ -135,7 +135,7 @@ class RunEngine:
             raise ValueError(f"mode must be governed or baseline, not {mode!r}")
         s = get_settings()
         seed = int(s.sim_seed if seed is None else seed)
-        scenario = load_scenario(scenario_id)
+        scenario = await resolve_scenario(scenario_id)
         demo = dict(scenario.get("demo") or {})
         if pause_on_planning is not None:
             demo["pause_on_planning"] = bool(pause_on_planning)
@@ -262,24 +262,32 @@ class RunEngine:
         return self.speed
 
     async def inject(self, event: str, by: str = "human:operator", **params: Any) -> dict[str, Any]:
-        """POST /runs/{id}/inject: generator_trip | injection_message."""
+        """Inject a supply interruption or an untrusted resident message."""
         w = self.world
-        if event == "generator_trip":
+        if event in ("generator_trip", "intertie_loss"):
             grid = _mod("sim.grid")
             aux = _mod("sim.aux_state").get_aux(w)
             cons = w.scenario.get("contingencies") or []
-            # Pull the next scheduled generator trip forward (so it does not fire twice), else add one.
+            # Pull a matching scheduled interruption forward so it only fires once.
             idx = next((i for i, c in enumerate(cons) if isinstance(c, dict) and i not in aux.fired_contingencies
-                        and str(c.get("type") or "generator_trip") == "generator_trip"), None)
+                        and str(c.get("type") or "generator_trip") == event), None)
             mw = params.get("mw")
             label = None
             if idx is not None:
                 aux.fired_contingencies.add(idx)
                 mw = mw or cons[idx].get("mw")
                 label = cons[idx].get("label")
-            ev = grid.inject_contingency(w, float(mw) if mw else None, label)
+            duration = cons[idx].get("duration_min") if idx is not None else None
+            if event == "intertie_loss" and duration is None:
+                duration = 45
+            default_mw = 350 if event == "generator_trip" else 200
+            label = label or ("Injected generator trip" if event == "generator_trip" else "Injected intertie loss")
+            ev = grid.fire_contingency(w, float(mw if mw is not None else default_mw), label, event,
+                                       duration_min=duration, scheduled=False)
             payload = {**(ev.get("payload") or {}), "injected_by": by, "scheduled_index": idx}
-            await self._ledger("world_event", by, f"{by} injected a generator trip at {hhmm(w.sim_now)}",
+            w.supply_mw = grid.supply_mw(w, w.sim_now)
+            w.shortfall_mw = max(w.demand_mw - w.supply_mw, 0.0)
+            await self._ledger("world_event", by, f"{by} injected {label.lower()} at {hhmm(w.sim_now)}",
                                {"kind": "inject", "event": event, "mw": payload.get("mw"), "label": payload.get("label")})
             await self._ledger("contingency", WORLD_ACTOR, str(ev.get("summary")), payload)
             if self.mode == "governed":
@@ -291,10 +299,14 @@ class RunEngine:
         if event == "injection_message":
             resident = _mod("world_agents.resident")
             msg = await resident.inject_scripted(w, int(params.get("index") or 0))
-            if msg is not None and self._redteam():
+            if msg is None:
+                raise ValueError("Could not deliver the test message for this run")
+            if self._redteam():
                 self._spawn(self.gov.planning_cycle("untrusted_reply"), "planning:untrusted_reply")
-            return {"event": event, "message_id": getattr(msg, "id", None)}
-        raise ValueError(f"unknown inject event {event!r}; use generator_trip or injection_message")
+            await self._ledger("world_event", by, f"{by} injected an untrusted resident message",
+                               {"kind": "inject", "event": event}, refs={"message_id": msg.id})
+            return {"event": event, "message_id": msg.id}
+        raise ValueError(f"unknown inject event {event!r}")
 
     def _redteam(self) -> bool:
         """Governed run whose scenario has a red-team drill on a scripted message."""
@@ -798,7 +810,8 @@ class RunEngine:
         tick.pop("type", None)
         tick.update({"pause_on_planning": self.pause_on_planning, "pause_on_approval": self.pause_on_approval,
                      "planning": bool(getattr(self.gov, "planning", False)) or self._planning_in_background(),
-                     "background_tasks": len(self._bg), "error": self.error, "live": True})
+                     "background_tasks": len(self._bg), "error": self.error, "live": True,
+                     "injectable_events": ["generator_trip", "intertie_loss", "injection_message"]})
         return tick
 
 

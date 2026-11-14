@@ -175,6 +175,12 @@ async def decide(request: ActionRequest, world: World, run: dict) -> Decision:
 
     ctx = await build_gate_context(world, run, request)
     decision = evaluate(request, ctx)
+    snapshot = [ctx.policies[result.rule_id].to_mongo() for result in decision.rule_results
+                if result.applies and result.rule_id in ctx.policies]
+    for policy in snapshot:
+        if policy["_id"] == "R05":
+            policy["params"] = {**policy["params"], "t_safe_c": ctx.t_safe_c}
+    decision.policy_snapshot = snapshot
     status = STATUS_BY_VERDICT[decision.verdict]
     now = sim_iso(world.sim_now)
     database = dbm.db()
@@ -207,6 +213,7 @@ async def decide(request: ActionRequest, world: World, run: dict) -> Decision:
             "denied_reasons": decision.denied_reasons,
             "failed_rules": [{"rule_id": r.rule_id, "name": r.name, "effect": r.effect, "detail": r.detail, "counts": r.counts} for r in failed],
             "rules_checked": [r.rule_id for r in decision.rule_results if r.applies],
+            "policy_snapshot": snapshot,
             "blast_radius": decision.blast_radius.model_dump(),
             "policy_version": decision.policy_version,
             "untrusted_influence": decision.untrusted_influence,

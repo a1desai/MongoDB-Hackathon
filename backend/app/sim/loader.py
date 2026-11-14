@@ -8,6 +8,7 @@ real homes per simulated home that makes the uncontrolled zone peak equal the sc
 target_peak_mw (see calibrate_scale).
 """
 
+import asyncio
 import copy
 import dataclasses
 import json
@@ -232,7 +233,8 @@ def build_world(run_id: str, mode: str, scenario: dict, seed: int | None, docs: 
         })
 
     wdocs = [w for w in docs.get("weather") or [] if w.get("scenario_id") in (None, scenario.get("id"))]
-    scenario["_weather"] = weather.cache_from_docs(wdocs) or weather.synthetic_cache(scenario, 0.0, 24.0)
+    scenario["_weather"] = weather.cache_from_docs(wdocs, offset_c=weather.delta_c(scenario)) or weather.synthetic_cache(
+        scenario, 0.0, 24.0)
 
     start, end = sim_bounds(scenario)
     static = np.random.default_rng([int(seed), 7_002])  # static per-home draws, independent of world.rng
@@ -383,13 +385,13 @@ def calibrate_scale(world: World) -> float:
 async def fetch_docs(scenario_id: str) -> dict[str, list[dict]]:
     """Read the world collections from Atlas (geometry is not needed by the sim)."""
     d = db()
-    out: dict[str, list[dict]] = {}
     no_geo = {"geometry": 0}
-    for key, coll in COLLECTIONS.items():
-        proj = no_geo if key in ("sections", "neighbourhoods") else None
-        out[key] = await d[coll].find({}, proj).to_list(None)
-    out["weather"] = await d[WEATHER].find({"scenario_id": scenario_id}, {"_id": 0}).sort("ts", 1).to_list(None)
-    return out
+    results = await asyncio.gather(
+        *(d[coll].find({}, no_geo if key in ("sections", "neighbourhoods") else None).to_list(None)
+          for key, coll in COLLECTIONS.items()),
+        d[WEATHER].find({"scenario_id": scenario_id}, {"_id": 0}).sort("ts", 1).to_list(None),
+    )
+    return dict(zip((*COLLECTIONS, "weather"), results, strict=True))
 
 
 def file_docs(data_dir: Path | None = None) -> dict[str, list[dict]]:

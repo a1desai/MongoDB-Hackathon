@@ -176,7 +176,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await app.state.http.aclose()
 
 
-app = FastAPI(title="Cooldown", version="0.1.0", lifespan=lifespan,
+app = FastAPI(title="GridLock", version="0.1.0", lifespan=lifespan,
               description="Governed AI agents keep Toronto's power on through a heat wave, and can prove it.")
 app.add_middleware(GZipMiddleware, minimum_size=2048)
 app.add_middleware(
@@ -202,7 +202,7 @@ except Exception:  # the API must come up even if a mock system has a bug
 
 @app.get("/")
 async def root() -> Any:
-    return J({"name": "Cooldown", "docs": "/docs", "health": "/health"})
+    return J({"name": "GridLock", "docs": "/docs", "health": "/health"})
 
 
 @app.get("/health")

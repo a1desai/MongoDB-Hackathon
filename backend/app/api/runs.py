@@ -11,9 +11,11 @@ from pydantic import BaseModel, Field
 from ..db import (
     ACTION_REQUESTS,
     APPROVALS,
+    BUSINESSES,
     DECISIONS,
     EXECUTIONS,
     FORECASTS,
+    HOUSEHOLDS,
     LEDGER,
     MESSAGES,
     PLANS,
@@ -49,6 +51,7 @@ class CreateRunBody(BaseModel):
     pause_on_planning: bool | None = None
     pause_on_approval: bool | None = None
     with_baseline: bool = False  # also start a fast headless baseline run (same scenario + seed) for /compare
+    defer_baseline: bool = False
     baseline_run_id: str | None = None
 
 
@@ -57,10 +60,10 @@ class SpeedBody(BaseModel):
 
 
 class InjectBody(BaseModel):
-    event: Literal["generator_trip", "injection_message"]
+    event: Literal["generator_trip", "intertie_loss", "injection_message"]
     by: str = "human:operator"
-    mw: float | None = None
-    index: int = 0
+    mw: float | None = Field(default=None, gt=0, le=20000)
+    index: int = Field(default=0, ge=0)
 
 
 class ByBody(BaseModel):
@@ -91,14 +94,21 @@ async def create_run(body: CreateRunBody, request: Request) -> Any:
     out: dict[str, Any] = {"run_id": eng.run_id, "mode": eng.mode, "households": eng.world.n,
                            "scale": eng.world.scale, "sim_ts": eng.run.get("sim_ts")}
     if body.with_baseline and body.mode == "governed":
-        try:
+        async def start_baseline() -> str:
             base = await RunEngine.create(body.scenario_id, "baseline", eng.run.get("seed"), http=http,
-                                          headless=True, created_by=body.by,
+                                          headless=True, start=False, created_by=body.by,
                                           extra={"companion_of": eng.run_id})
             await eng._save_run({"baseline_run_id": base.run_id})
-            out["baseline_run_id"] = base.run_id
-        except Exception:
-            log.exception("companion baseline run failed to start")
+            base.start()
+            return base.run_id
+
+        if body.defer_baseline:
+            eng._spawn(start_baseline(), "comparison baseline")
+        else:
+            try:
+                out["baseline_run_id"] = await start_baseline()
+            except Exception:
+                log.exception("companion baseline run failed to start")
     return J(out)
 
 
@@ -116,11 +126,15 @@ async def list_runs(limit: int = Query(20, ge=1, le=200), mode: str | None = Non
 
 @router.get("/runs/{run_id}")
 async def get_run(run_id: str) -> Any:
-    doc = await db()[RUNS].find_one({"_id": run_id}, {"scenario": 0})
+    doc = await db()[RUNS].find_one({"_id": run_id}, {
+        "scenario.designer.prompt": 0, "scenario.scripted_messages": 0,
+    })
     eng = live_engine(run_id)
     if doc is None and eng is None:
         raise HTTPException(404, f"run {run_id} not found")
     doc = dict(doc or eng.run)
+    scenario = doc.pop("scenario", None) or {}
+    doc["scenario_title"] = scenario.get("title")
     if eng is not None:
         doc.update(eng.live_state())
     else:
@@ -153,6 +167,8 @@ async def inject(run_id: str, body: InjectBody) -> Any:
     eng = require_engine(run_id)
     if not body.by.startswith("human:"):
         raise HTTPException(403, f"{body.by} may not inject events")
+    if eng.finished:
+        raise HTTPException(409, "This simulation has ended.")
     try:
         return J({"run_id": run_id, **await eng.inject(body.event, body.by, mw=body.mw, index=body.index)})
     except Exception as exc:
@@ -233,22 +249,46 @@ def _card(req: dict[str, Any], decision: dict | None, approval: dict | None, exe
     return r
 
 
-async def request_card(request_id: str) -> dict[str, Any] | None:
+async def request_card(request_id: str, *, run_id: str | None = None, execution_id: str | None = None) -> dict[str, Any] | None:
     """One joined request card (used by the action_requests change stream → WS)."""
-    req = await db()[ACTION_REQUESTS].find_one({"_id": request_id})
+    query = {"_id": request_id}
+    if run_id is not None:
+        query["run_id"] = run_id
+    req = await db()[ACTION_REQUESTS].find_one(query)
     if req is None:
         return None
     dec = await db()[DECISIONS].find_one({"request_id": request_id}, sort=[("sim_ts", -1)])
     apr = await db()[APPROVALS].find_one({"request_id": request_id}, sort=[("requested_sim_ts", -1)])
-    exe = await db()[EXECUTIONS].find_one({"request_id": request_id}, {"pre_state": 0}, sort=[("sent_tick", -1)])
-    return _card(req, dec, apr, exe)
+    execution_query = {"request_id": request_id}
+    if execution_id:
+        execution_query["_id"] = execution_id
+    exe = await db()[EXECUTIONS].find_one(execution_query, {"pre_state": 0}, sort=[("sent_tick", -1)])
+    card = _card(req, dec, apr, exe)
+    if run_id is None:
+        return card
+    targets = req.get("targets") or {}
+    if targets.get("section_id"):
+        card["target_sections"] = [targets["section_id"]]
+    elif targets.get("business_id"):
+        business = await db()[BUSINESSES].find_one({"_id": targets["business_id"]}, {"section_id": 1})
+        if business and business.get("section_id"):
+            card["target_sections"] = [business["section_id"]]
+    elif targets.get("household_ids") or targets.get("recipient_ids"):
+        house_ids = (targets.get("household_ids") or []) + (targets.get("recipient_ids") or [])
+        card["target_sections"] = sorted(sid for sid in await db()[HOUSEHOLDS].distinct(
+            "section_id", {"_id": {"$in": house_ids}}) if sid)
+    return card
 
 
 @router.get("/runs/{run_id}/requests/{request_id}")
-async def get_request(run_id: str, request_id: str) -> Any:
-    card = await request_card(request_id)
-    if card is None or card.get("run_id") != run_id:
+async def get_request(run_id: str, request_id: str, execution_id: str | None = None) -> Any:
+    card = await request_card(request_id, run_id=run_id, execution_id=execution_id)
+    if card is None:
         raise HTTPException(404, f"request {request_id} not found in {run_id}")
+    card["decision_path"] = await db()[LEDGER].find(
+        {"run_id": run_id, "refs.request_id": request_id},
+        {"_id": 0, "seq": 1, "type": 1, "sim_ts": 1, "payload.verdict": 1},
+    ).sort("seq", 1).limit(100).to_list(None)
     return J(card)
 
 

@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 
 from app.governance import gate
+from app.executor.executor import Executor
 from app.governance.context import GateContext
 from app.governance.rules import (
     ALL_RULES,
@@ -475,6 +476,17 @@ def test_partial_batch_with_untrusted_evidence_needs_approval():
     ev = [Evidence(id="msg_x0009", kind="message", trust="untrusted")]
     d = gate.evaluate(req("thermostat_setback", hh=ALL, params=SETBACK, evidence=ev), make_ctx())
     assert d.verdict == "needs_approval" and d.denied_count == 4 and len(d.allowed_household_ids) == 16
+
+
+def test_reviewed_message_batch_keeps_gate_recipient_restrictions():
+    world = make_world()
+    world.sms_opt_in[1] = False
+    request = req("send_sms", messages=[sms(0), sms(1)])
+    decision = gate.evaluate(request, make_ctx(world))
+    assert decision.allowed_household_ids == [world.hh_ids[0]]
+    reviewed = decision.model_copy(update={"verdict": "needs_approval"})
+    executor = Executor(None)
+    assert [msg["to"] for msg in executor._messages(request, reviewed, world, None, None)] == [world.hh_ids[0]]
 
 
 def test_kill_switch_denies_whole_batch():

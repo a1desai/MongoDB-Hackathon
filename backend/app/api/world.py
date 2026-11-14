@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..config import get_settings
 from ..db import FACILITIES, HOUSEHOLDS, MESSAGES, NEIGHBOURHOODS, RESIDENTS, RUNS, SECTIONS, db
+from ..observations import load_observations
 from .common import J, latest_live_run_id, live_engine
 
 log = logging.getLogger("cooldown.api.world")
@@ -128,6 +129,22 @@ async def world_static(refresh: bool = False) -> Any:
         if _static is None or refresh or not _static["households"]["ids"]:
             _static = await build_static()
     return J(_static)
+
+
+@router.get("/world/observations")
+def world_observations() -> Any:
+    observations = load_observations()
+    if not observations:
+        raise HTTPException(404, "Historical observations are unavailable. Run scripts.fetch_data and scripts.build_world.")
+    return J(observations)
+
+
+@router.get("/world/hydro-lines")
+def world_hydro_lines() -> Any:
+    lines = load_observations("hydro-lines.geojson")
+    if not lines:
+        raise HTTPException(404, "Ontario line data is unavailable. Run scripts.fetch_data and scripts.build_world.")
+    return J(lines)
 
 
 # ---------------------------------------------------------------- residents

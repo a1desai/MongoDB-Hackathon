@@ -1,14 +1,38 @@
-// Illustrative operating zones, not municipal, utility or legal boundaries.
+// Colours and camera targets for the zones published by IESO.
 export const regions = [
- {id:'northwest',name:'Northwest',city:'Thunder Bay',center:[-89.25,48.38],color:'#aa8be4',demand:340,homes:48200,polygon:[[-95.15,49],[-94.5,52],[-90,54],[-87,53],[-86,50],[-88,48.1],[-89.5,48],[-90.8,48.1],[-92,48.6],[-95.15,49]]},
- {id:'farnorth',name:'Far North',city:'Moosonee',center:[-80.65,51.27],color:'#efad86',demand:180,homes:16200,polygon:[[-90,54],[-88,56],[-85,55],[-82,55],[-81,53],[-79.5,51.5],[-80,50],[-84,50],[-86,50],[-87,53],[-90,54]]},
- {id:'northeast',name:'Northeast',city:'Sudbury',center:[-80.99,46.49],color:'#87c7cc',demand:620,homes:93200,polygon:[[-88,48.1],[-86,50],[-80,50],[-79.5,47],[-80,46],[-81.8,45.8],[-83,46],[-84.5,46.5],[-86,47.5],[-88,48.1]]},
- {id:'east',name:'Eastern Ontario',city:'Ottawa',center:[-75.7,45.42],color:'#b7a1ed',demand:1320,homes:312000,polygon:[[-79.5,47],[-78,46.4],[-76,45.8],[-74.4,45.55],[-74.5,45],[-76.2,44.2],[-77.7,43.9],[-78.5,44.5],[-80,46],[-79.5,47]]},
- {id:'central',name:'Central Ontario',city:'Barrie',center:[-79.69,44.39],color:'#f3b6c9',demand:850,homes:194000,polygon:[[-81.8,45.8],[-80,46],[-78.5,44.5],[-78.8,43.9],[-79.5,43.8],[-80.6,44.1],[-81.8,45.8]]},
- {id:'gta',name:'Greater Toronto',city:'Toronto',center:[-79.383,43.653],color:'#76b4f2',demand:3965,homes:942000,polygon:[[-80.6,44.1],[-79.5,43.8],[-78.8,43.9],[-78.8,43.78],[-79.05,43.78],[-79.3,43.65],[-79.6,43.5],[-79.8,43.25],[-80.2,43.3],[-80.6,44.1]]},
- {id:'southwest',name:'Southwest',city:'London',center:[-81.25,42.98],color:'#91d6ae',demand:1810,homes:427000,polygon:[[-81.8,45.8],[-80.6,44.1],[-80.2,43.3],[-79.8,43.25],[-79.9,42.9],[-81,42.6],[-82.5,41.8],[-83.1,42.1],[-82.4,43],[-81.7,44.2],[-81.8,45.8]]},
- {id:'niagara',name:'Niagara',city:'St. Catharines',center:[-79.24,43.16],color:'#f0d079',demand:510,homes:112000,polygon:[[-79.8,43.25],[-79.6,43.5],[-79.25,43.25],[-79.05,43.25],[-79.05,42.9],[-79.9,42.9],[-79.8,43.25]]}
+  {id: 'northwest', name: 'Northwest', city: 'Thunder Bay', center: [-89.25, 48.38], color: '#aa8be4'},
+  {id: 'northeast', name: 'Northeast', city: 'Sudbury', center: [-80.99, 46.49], color: '#87c7cc'},
+  {id: 'ottawa', name: 'Ottawa', city: 'Ottawa', center: [-75.70, 45.42], color: '#f0b88c'},
+  {id: 'east', name: 'East', city: 'Peterborough', center: [-78.32, 44.30], color: '#b7a1ed'},
+  {id: 'gta', name: 'Toronto', city: 'Toronto', center: [-79.383, 43.653], color: '#76b4f2'},
+  {id: 'essa', name: 'Essa', city: 'Barrie', center: [-79.69, 44.39], color: '#f3b6c9'},
+  {id: 'bruce', name: 'Bruce', city: 'Kincardine', center: [-81.64, 44.18], color: '#f3a78d'},
+  {id: 'southwest', name: 'Southwest', city: 'Kitchener', center: [-80.49, 43.45], color: '#91d6ae'},
+  {id: 'niagara', name: 'Niagara', city: 'St. Catharines', center: [-79.24, 43.16], color: '#f0d079'},
+  {id: 'west', name: 'West', city: 'Windsor', center: [-83.03, 42.31], color: '#89c8b0'},
 ];
-export const cities=[{name:'Toronto',coordinates:[-79.383,43.653]},{name:'Ottawa',coordinates:[-75.7,45.42]},{name:'Hamilton',coordinates:[-79.87,43.25]},{name:'London',coordinates:[-81.25,42.98]},{name:'Windsor',coordinates:[-83.03,42.31]},{name:'Sudbury',coordinates:[-80.99,46.49]},{name:'Thunder Bay',coordinates:[-89.25,48.38]},{name:'Timmins',coordinates:[-81.33,48.48]},{name:'Kenora',coordinates:[-94.49,49.77]},{name:'Moosonee',coordinates:[-80.65,51.27]}];
-export const regionGeoJSON={type:'FeatureCollection',features:regions.map(r=>({type:'Feature',properties:{id:r.id,name:r.name,color:r.color},geometry:{type:'Polygon',coordinates:[r.polygon]}}))};
-export const connections={type:'FeatureCollection',features:[['Toronto','Hamilton','London','Windsor'],['Toronto','Ottawa'],['Toronto','Sudbury','Timmins','Moosonee'],['Sudbury','Thunder Bay','Kenora']].map((route,i)=>({type:'Feature',properties:{color:['#32a888','#a27ce4','#e59a60','#7794da'][i]},geometry:{type:'LineString',coordinates:route.map(n=>cities.find(c=>c.name===n).coordinates)}}))};
+
+const cityMarkers = [
+  {name: 'Toronto', coordinates: [-79.383, 43.653]},
+  {name: 'Ottawa', coordinates: [-75.70, 45.42]},
+  {name: 'Hamilton', coordinates: [-79.87, 43.25]},
+  {name: 'London', coordinates: [-81.25, 42.98]},
+  {name: 'Windsor', coordinates: [-83.03, 42.31]},
+  {name: 'Sudbury', coordinates: [-80.99, 46.49]},
+  {name: 'Timmins', coordinates: [-81.33, 48.48]},
+  {name: 'Kenora', coordinates: [-94.49, 49.77]},
+  {name: 'Moosonee', coordinates: [-80.65, 51.27]},
+];
+
+export const cities = [...cityMarkers, ...regions
+  .filter(region => !cityMarkers.some(city => city.name === region.city))
+  .map(region => ({name: region.city, coordinates: region.center}))];
+
+export function zoneFeatures(observations) {
+  const features = (observations?.zones?.features ?? []).flatMap(feature => {
+    const region = regions.find(region => region.name === feature.properties.name);
+    if (!region) return [];
+    return [{...feature, properties: {...feature.properties, id: region.id, color: region.color}}];
+  });
+  return {type: 'FeatureCollection', features};
+}

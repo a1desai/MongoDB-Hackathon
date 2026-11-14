@@ -165,7 +165,8 @@ def fire_contingency(world: World, mw: float, label: str, kind: str = "generator
     return _event(
         f"{label}: {mw:,.0f} MW of supply lost at {hhmm(world.sim_now)}; supply now {supply:,.0f} MW",
         {"kind": kind, "mw": mw, "label": label, "scheduled": scheduled, "supply_mw": round(supply, 1),
-         "contingency_lost_mw": round(world.contingency_lost_mw, 1), "at": sim_iso(world.sim_now)},
+         "contingency_lost_mw": round(world.contingency_lost_mw, 1), "at": sim_iso(world.sim_now),
+         **({"duration_min": duration_min} if duration_min else {})},
         "contingency",
     )
 
@@ -195,7 +196,7 @@ def check_contingencies(world: World) -> list[dict]:
         if world.sim_now >= until:
             world.contingency_lost_mw = max(world.contingency_lost_mw - mw, 0.0)
             events.append(_event(f"{label}: {mw:,.0f} MW of supply restored at {hhmm(world.sim_now)}",
-                                 {"kind": "contingency_restored", "mw": mw, "label": label}))
+                                 {"kind": "contingency_restored", "mw": mw, "label": label}, "contingency"))
         else:
             keep.append((until, mw, label))
     aux.contingency_restores = keep

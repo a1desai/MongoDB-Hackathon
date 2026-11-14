@@ -1,8 +1,8 @@
-# Cooldown scenario (PLAN §15). Fictional stress test; real public data only shapes the curves.
+# GridLock scenario (PLAN §15). Fictional stress test; real public data only shapes the curves.
 id: heatwave_2031
 title: "Toronto heat wave, 2031 stress test (fictional)"
 date: 2031-06-24
-weather: { source: eccc_2025-06-24, delta_c: 3.0 } # fallback: synthetic curve + 3.0
+weather: { source: eccc_2025-06-24, delta_c: 0.0 }
 sim_start: "12:00"
 sim_end: "21:30"
 target_peak_mw: 4000 # fictional zone stand-in used for calibration only
@@ -42,13 +42,12 @@ supply_schedule_mw:
 #   zone_demand(t) = scale * residential_sim_mw(t) + commercial_background_mw(t) + sum(business load_mw)
 #   scale = (target_peak_mw - commercial_background_mw(peak_time) - businesses_base_mw)
 #           / residential_sim_mw(peak_time) on an uncontrolled (no-agent) run.
-# commercial_background_mw is hourly; interpolate linearly between points. It is 45% of the target
-# peak at 17:00, shaped by the IESO 2025-06-24 Ontario demand curve with an office-hours taper
-# after 17:00 (computed by scripts/build_world.py; data/processed/scenarios.json carries the copy
-# rebuilt from the downloaded data).
+# Commercial load follows the IESO Toronto-zone curve when observations are available, scaled to
+# 45% of the simulation target at 17:00. The profile below is the offline fallback.
 calibration:
   peak_time: "17:00"
   commercial_background_share: 0.45
+  observed_demand_zone: Toronto
   businesses_base_mw: 111 # sum of businesses.json base_load_mw
   commercial_background_mw:
     "00:00": 1132

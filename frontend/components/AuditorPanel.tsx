@@ -69,6 +69,9 @@ export default function AuditorPanel() {
 
   return (
     <div className="space-y-4 p-4">
+      <a className="inline-flex items-center gap-2 text-emerald-200 underline"
+        href={`${process.env.NEXT_PUBLIC_SCENARIO_APP_URL || "http://localhost:5173"}/?view=policies`}
+        target="_blank" rel="noreferrer">Review active policies</a>
       {/* question */}
       <div>
         <div className="mb-2 flex items-center gap-2">

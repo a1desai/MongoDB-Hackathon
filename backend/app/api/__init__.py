@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter
 
-from . import approvals, audit, control, runs, world, ws
+from . import approvals, audit, control, policies, runs, scenarios, world, ws
 
-routers: list[APIRouter] = [runs.router, approvals.router, control.router, audit.router, world.router, ws.router]
+routers: list[APIRouter] = [scenarios.router, runs.router, approvals.router, control.router, audit.router, policies.router, world.router, ws.router]
 
 __all__ = ["routers"]

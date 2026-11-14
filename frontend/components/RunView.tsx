@@ -149,11 +149,11 @@ export default function RunView({ runId }: { runId: string }) {
   return (
     <div className="grid-bg flex h-full flex-col gap-3 p-3">
       <ControlBar />
-      <main className="flex min-h-0 flex-1 gap-3">
-        <div className="min-h-0 w-[40%] min-w-[420px] max-w-[680px]">
+      <main className="flex min-h-0 flex-1 flex-col-reverse gap-3 md:flex-row">
+        <div className="min-h-0 flex-1 md:w-[40%] md:max-w-[680px] md:flex-none">
           <AgentConsole />
         </div>
-        <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#070a10]">
+        <div className="relative min-h-0 flex-1 overflow-hidden rounded-sm border border-line bg-background">
           {/* CityMap renders its own ResidentPanel overlay (W10). */}
           <div className="absolute inset-0">
             <CityMap />

@@ -64,6 +64,7 @@ function IdentitySwitcher() {
 
 function InjectMenu({ disabled, runId }: { disabled: boolean; runId: string }) {
   const [open, setOpen] = useState(false);
+  const injectable = useRunStore((s) => s.run?.injectable_events);
   const identity = useRunStore((s) => s.identity);
   const toast = useRunStore((s) => s.toast);
   const ref = useRef<HTMLDivElement>(null);
@@ -76,11 +77,11 @@ function InjectMenu({ disabled, runId }: { disabled: boolean; runId: string }) {
     return () => window.removeEventListener("mousedown", close);
   }, [open]);
 
-  async function inject(event: "generator_trip" | "injection_message") {
+  async function inject(event: "generator_trip" | "intertie_loss" | "injection_message") {
     setOpen(false);
     try {
       await api.inject(runId, event, identity);
-      toast("info", event === "generator_trip" ? "Injected: generator trip (350 MW)" : "Injected: untrusted message from a resident");
+      toast("info", `Injected: ${{generator_trip: "generator trip", intertie_loss: "intertie loss", injection_message: "untrusted resident message"}[event]}`);
     } catch (e) {
       toast("error", `Inject failed: ${e instanceof ApiError ? e.message : String(e)}`);
     }
@@ -99,9 +100,14 @@ function InjectMenu({ disabled, runId }: { disabled: boolean; runId: string }) {
             <Icon.Bolt size={14} className="mt-0.5 text-rose-300" />
             <span>
               <span className="block text-[12.5px] font-medium text-slate-100">Generator trip</span>
-              <span className="block text-[11px] text-slate-400">Unit G-3 drops 350 MW of supply</span>
+              <span className="block text-[11px] text-slate-400">Pull forward the scheduled trip or drop 350 MW</span>
             </span>
           </button>
+          {injectable?.includes("intertie_loss") && <button type="button" onClick={() => inject("intertie_loss")} className="flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left hover:bg-white/[0.06]">
+            <Icon.Bolt size={14} className="mt-0.5 text-amber-300" />
+            <span><span className="block text-[12.5px] text-slate-100">Intertie loss</span>
+              <span className="block text-[11px] text-slate-400">200 MW for 45 simulated minutes by default</span></span>
+          </button>}
           <button type="button" onClick={() => inject("injection_message")} className="flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left hover:bg-white/[0.06]">
             <Icon.Message size={14} className="mt-0.5 text-orange-300" />
             <span>
@@ -172,7 +178,7 @@ export default function ControlBar() {
           <Icon.Thermo size={16} strokeWidth={2.2} />
         </div>
         <div className="hidden leading-tight xl:block">
-          <div className="text-[13px] font-semibold tracking-tight text-white">Cooldown</div>
+          <div className="text-[13px] font-semibold tracking-tight text-white">GridLock</div>
           <div className="font-mono text-[10px] text-slate-500">{runId.length > 18 ? `${runId.slice(0, 18)}…` : runId}</div>
         </div>
       </Link>
