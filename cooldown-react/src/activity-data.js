@@ -7,6 +7,33 @@ export const actions = {
 
 export const verdicts = {allow: 'Auto-authorized', partial_allow: 'Eligible targets auto-authorized', deny: 'Blocked', needs_approval: 'Needs supervisor approval'};
 
+export const feederEvents = {
+  uncontrolled_trip: 'Feeder tripped',
+  trip_restore: 'Feeder restored',
+  world_cut_released: 'Power restored after a trip',
+  baseline_outage: 'Rolling outage started',
+  baseline_restore: 'Feeder re-energised',
+  baseline_restore_all: 'Baseline restoration',
+};
+
+function feederIds(...ids) {
+  return [...new Set(ids.flat().filter(id => typeof id === 'string' && id.length))];
+}
+
+export function eventFeeders(entry, proposal, card, plan) {
+  if (!entry) return [];
+  const payload = entry.payload || {};
+  const recorded = feederIds(payload.section_id, payload.section_ids, payload.sections);
+  if (recorded.length) return recorded;
+  if (entry.refs?.request_id) {
+    return feederIds(proposal?.section_id, card?.targets?.section_id, card?.target_sections);
+  }
+  if (entry.type === 'plan_created') {
+    return feederIds((plan?.steps || payload.steps || []).flatMap(step => step.selector?.sections || []));
+  }
+  return [];
+}
+
 export function eventTitle(entry, actionType) {
   const action = actions[actionType];
   const payload = entry.payload || {};
@@ -23,9 +50,8 @@ export function eventTitle(entry, actionType) {
     case 'contingency': return {generator_trip: 'Generator tripped', intertie_loss: 'Intertie supply interrupted', contingency_restored: 'Supply restored'}[payload.kind] || 'Grid contingency';
     case 'message_in': return 'Resident or business replied';
     case 'message_out': return 'Message sent';
-    default: return {
+    default: return feederEvents[payload.kind] || {
       run_started: 'Simulation started', run_finished: 'Simulation finished',
-      uncontrolled_trip: 'Feeder tripped', trip_restore: 'Feeder restored',
     }[payload.kind] || 'Simulation update';
   }
 }

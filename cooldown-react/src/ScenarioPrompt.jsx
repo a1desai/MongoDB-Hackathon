@@ -3,9 +3,9 @@ import {ArrowRight, CornerDownLeft, Terminal} from 'lucide-react';
 import {simulationApi} from './simulation-api.js';
 import PolicyReview from './PolicyReview.jsx';
 
-const preset = {id: 'heatwave_2031', title: 'Toronto heatwave', date: '2031-06-24'};
+export const BUILT_IN_SCENARIO = {id: 'heatwave_2031', title: 'Toronto heatwave', date: '2031-06-24'};
 
-export default function ScenarioPrompt({onStart, pending, runError, showPolicies}) {
+export default function ScenarioPrompt({onStart, pending, runError, showPolicies, hidden}) {
   const [prompt, setPrompt] = useState('');
   const [scenario, setScenario] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -41,7 +41,7 @@ export default function ScenarioPrompt({onStart, pending, runError, showPolicies
     }
   }
 
-  return <main className="scenario-start">
+  return <main className="scenario-start" hidden={hidden}>
     <header className="terminal-header"><span><Terminal size={17}/> GridLock</span><span>~/scenarios</span></header>
     <section className="scenario-workbench" aria-labelledby={showPolicies ? undefined : 'scenario-heading'}>
       {showPolicies && <><a className="policy-back" href="./">← Scenario prompt</a><PolicyReview/></>}
@@ -84,8 +84,8 @@ export default function ScenarioPrompt({onStart, pending, runError, showPolicies
       </section>}
       <div className="scenario-preset">
         <span className="preset-label">Built-in scenario</span>
-        <button type="button" disabled={busy} onClick={() => startRun(preset.id, preset.title)}>
-          <span><strong>{preset.title}</strong><small>{preset.date} · 350 MW generator trip at 17:40 ET</small></span><ArrowRight size={16}/>
+        <button type="button" disabled={busy} onClick={() => startRun(BUILT_IN_SCENARIO.id, BUILT_IN_SCENARIO.title)}>
+          <span><strong>{BUILT_IN_SCENARIO.title}</strong><small>{BUILT_IN_SCENARIO.date} · 350 MW generator trip at 17:40 ET</small></span><ArrowRight size={16}/>
         </button>
       </div>
       <a className="policy-back" href="?view=policies">Review policies</a>

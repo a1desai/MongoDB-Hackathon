@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
+import {feederEvents} from './activity-data.js';
 import {simulationApi} from './simulation-api.js';
 
 const POLL_INTERVAL = 1500;
@@ -38,7 +39,7 @@ export function useSimulation() {
       if (ledger.status === 'fulfilled' && ledger.value.entries.length) {
         cursor.current = ledger.value.last_seq;
         const newEvents = ledger.value.entries.filter(entry => ACTION_EVENTS.has(entry.type) ||
-          ['run_started', 'run_finished', 'uncontrolled_trip', 'trip_restore'].includes(entry.payload?.kind));
+          Object.hasOwn(feederEvents, entry.payload?.kind) || ['run_started', 'run_finished'].includes(entry.payload?.kind));
         setEvents(previous => [...previous, ...newEvents].slice(-VISIBLE_ENTRIES));
       }
       if (pendingApprovals.status === 'fulfilled') setApprovals(pendingApprovals.value.approvals);

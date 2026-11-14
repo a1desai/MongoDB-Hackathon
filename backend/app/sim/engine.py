@@ -122,13 +122,20 @@ class RunEngine:
     def mode(self) -> str:
         return self.world.mode
 
+    @staticmethod
+    def warmup() -> None:
+        """Load the run dependencies and open the shared checkpoint store before the first run."""
+        _mod("sim.loader")
+        _mod("executor.executor")
+        _mod("agents.graph").make_checkpointer()
+
     @classmethod
     async def create(cls, scenario_id: str = "heatwave_2031", mode: str = "governed", seed: int | None = None, *,
                      http: httpx.AsyncClient | None = None, speed: float = 1.0,
                      pause_on_planning: bool | None = None, pause_on_approval: bool | None = None,
                      baseline_run_id: str | None = None, headless: bool = False, start: bool = True,
                      created_by: str = "human:operator", extra: dict[str, Any] | None = None) -> RunEngine:
-        """Create the run doc, load the World, register it in app.runtime and start the tick loop."""
+        """Load the World, persist the run, register it in app.runtime and start the tick loop."""
         from .. import runtime
 
         if mode not in ("governed", "baseline"):
@@ -151,30 +158,33 @@ class RunEngine:
                   baseline_run_id=baseline_run_id, created_wall_ts=wall_now()).to_mongo()
         run.update({"tick": 0, "demo": demo, "created_by": created_by, "headless": headless,
                     "scenario": _plain(public_scenario(scenario)), **(extra or {})})
-        await db()[RUNS].insert_one(run)
+
+        async def policy_version_for_run() -> str | None:
+            with contextlib.suppress(Exception):
+                _, version = await _mod("governance.identities").load_policies()
+                return version
+            return None
 
         try:
             loader = _mod("sim.loader")
-            world: World = await loader.load_world(run_id, mode, scenario, seed)
+            world, policy_version = await asyncio.gather(
+                loader.load_world(run_id, mode, scenario, seed),
+                policy_version_for_run(),
+            )
         except Exception as exc:
             log.exception("load_world failed for %s", run_id)
             with contextlib.suppress(Exception):
-                await db()[RUNS].update_one({"_id": run_id}, {"$set": {"status": "failed",
-                                                                        "error": f"load_world: {exc}"}})
+                await db()[RUNS].insert_one({**run, "status": "failed", "error": f"load_world: {exc}"})
             raise RuntimeError(f"could not load the world: {exc}") from exc
 
-        policy_version = None
-        with contextlib.suppress(Exception):
-            _, policy_version = await _mod("governance.identities").load_policies()
         run.update({"scale": float(world.scale), "households": int(world.n), "sim_ts": sim_iso(world.sim_now),
                     "sim_end": sim_iso(world.sim_end), "total_ticks": clock.total_ticks(world),
                     "policy_version": policy_version})
-        await db()[RUNS].update_one({"_id": run_id}, {"$set": {
-            k: run[k] for k in ("scale", "households", "sim_ts", "sim_end", "total_ticks", "policy_version")}})
+        await db()[RUNS].insert_one(run)
 
         eng = cls(run, world, http, headless=headless)
-        runtime.register(world, eng)
         await eng._setup()
+        runtime.register(world, eng)
         await eng._ledger("world_event", created_by,
                           f"Run {run_id} started by {created_by}: {mode} mode, scenario {run['scenario_id']}, "
                           f"seed {seed}, {world.n:,} simulated homes (x{world.scale:,.0f} real)",
@@ -195,7 +205,7 @@ class RunEngine:
                 graph = _mod("agents.graph")
                 checkpointer = None
                 with contextlib.suppress(Exception):
-                    checkpointer = graph.make_checkpointer()
+                    checkpointer = await asyncio.to_thread(graph.make_checkpointer)
                 if checkpointer is None:
                     from langgraph.checkpoint.memory import InMemorySaver
 

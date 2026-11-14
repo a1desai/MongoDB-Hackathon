@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {ArrowUpRight, ChevronDown, MapPin, X} from 'lucide-react';
-import {actions, actorName, eventDescription, eventTitle, formatMw, verdicts} from './activity-data.js';
+import {actions, actorName, eventDescription, eventFeeders, eventTitle, formatMw, verdicts} from './activity-data.js';
 import {simulationApi} from './simulation-api.js';
 import PolicyReview, {PolicyList} from './PolicyReview.jsx';
 import ActionTrace from './ActionTrace.jsx';
@@ -24,7 +24,7 @@ function matches(entry, filter) {
   }
 }
 
-function Details({entry, card, plan, error, loading, onSections, trail, formatTime}) {
+function Details({entry, card, plan, error, loading, feeders, onSections, trail, formatTime}) {
   const payload = entry.payload || {};
   const decision = card?.decision;
   const execution = card?.execution;
@@ -33,7 +33,6 @@ function Details({entry, card, plan, error, loading, onSections, trail, formatTi
   const steps = plan?.steps || payload.steps;
   const rationale = plan?.rationale || payload.rationale;
   const evidence = card?.evidence || payload.evidence || [];
-  const sections = card?.target_sections || [card?.targets?.section_id || payload.section_id].filter(Boolean);
   const why = decision?.rule_results?.filter(rule => rule.applies) || payload.failed_rules || [];
   const planEvidence = plan?.evidence_ids || payload.evidence_ids || [];
   const policySnapshot = decision?.policy_snapshot || payload.policy_snapshot || [];
@@ -81,16 +80,16 @@ function Details({entry, card, plan, error, loading, onSections, trail, formatTi
       <span>{eventTitle(event, card?.action_type || event.payload?.action_type)}</span>
       <time dateTime={event.sim_ts}>{formatTime(event.sim_ts)}</time>
     </li>)}</ol></div>}
-    {sections.length > 0 && <div><h3>Targeted simulated feeders</h3>
-      {onSections && <button className="event-link" onClick={() => onSections(sections)}>
-        <MapPin size={14}/> Show {sections.length === 1 ? sections[0] : `${sections.length} feeders`} on map
-      </button>}
-      <p>{sections.join(', ')}</p></div>}
+    {feeders.length > 0 && <div><h3>{entry.refs?.request_id ? 'Targeted simulated feeders' : 'Simulated feeders'}</h3>
+      <button className="event-link" onClick={() => onSections(feeders)}>
+        <MapPin size={14}/> Show {feeders.length === 1 ? feeders[0] : `${feeders.length} feeders`} on map
+      </button>
+      {feeders.length > 1 && <p>{feeders.join(', ')}</p>}</div>}
     <details className="ledger-record"><summary>Original ledger record</summary><p>{entry.summary}</p></details>
   </div>;
 }
 
-export default function AgentActivity({simulation, formatTime, onClose, onSections}) {
+export default function AgentActivity({simulation, formatTime, onClose, onSections, startingTitle}) {
   const {run, runId, events, approvals, consoleUrl, live, pending, decideApproval} = simulation;
   const [filter, setFilter] = useState(() => new URLSearchParams(window.location.search).get('view') === 'policies' ? 'policies' : 'all');
   const [expanded, setExpanded] = useState(null);
@@ -125,6 +124,12 @@ export default function AgentActivity({simulation, formatTime, onClose, onSectio
   const visible = filter === 'policies' ? [] : events.filter(entry => matches(entry, filter)).reverse();
   const currentDetail = detail?.key === detailKey ? detail : null;
   const trail = currentDetail?.card?.decision_path || (requestId ? events.filter(entry => entry.refs?.request_id === requestId) : []);
+  const feeders = eventFeeders(open, requests.get(requestId), currentDetail?.card, currentDetail?.plan);
+  const sectionKey = feeders.join(',');
+
+  useEffect(() => {
+    onSections(sectionKey ? sectionKey.split(',') : []);
+  }, [detailKey, sectionKey, onSections]);
 
   return <aside className="activity-workspace" aria-label="Agent activity">
     <div className="activity-header">
@@ -158,12 +163,17 @@ export default function AgentActivity({simulation, formatTime, onClose, onSectio
             <strong>{eventTitle(entry, action)}</strong><span className="event-summary">{action && entry.type !== 'request_proposed' && <b>{actions[action]} · </b>}{eventDescription(entry)}</span></span>
             <span className="event-tail"><time dateTime={entry.sim_ts}>{formatTime(entry.sim_ts)}</time><ChevronDown size={16}/></span>
           </button>
-          {isOpen && <Details entry={entry} onSections={onSections} card={currentDetail?.card}
+          {isOpen && <Details entry={entry} feeders={feeders} onSections={onSections} card={currentDetail?.card}
             plan={currentDetail?.plan} error={currentDetail?.error} trail={trail} formatTime={formatTime}
             loading={Boolean((requestId || planVersion != null) && !currentDetail)}/>}
         </article>;
       })}
-      {filter !== 'policies' && !visible.length && <p className="activity-empty">{runId ? (events.length ? 'No events match this filter.' : 'Waiting for the first ledger event.') : 'Start a simulation to see how agents respond to a power shortfall.'}</p>}
+      {startingTitle && <section className="scenario-progress activity-startup" aria-label="Run startup">
+        <p role="status">Starting {startingTitle}…</p>
+        <progress aria-label="Loading the grid and initializing agents"/>
+        <small>Loading the grid and initializing agents</small>
+      </section>}
+      {!startingTitle && filter !== 'policies' && !visible.length && <p className="activity-empty">{runId ? (events.length ? 'No events match this filter.' : 'Waiting for the first ledger event.') : 'Start a simulation to see how agents respond to a power shortfall.'}</p>}
     </div>
     {consoleUrl && <footer className="activity-footer"><a href={consoleUrl} target="_blank" rel="noopener noreferrer">Open full run console <ArrowUpRight size={13}/></a></footer>}
   </aside>;

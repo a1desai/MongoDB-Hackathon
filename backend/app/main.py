@@ -165,6 +165,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     else:
         log.error("MONGODB_URI is not set: no change streams, runs cannot start")
     try:
+        if s.mongodb_uri:
+            try:
+                from .sim.engine import RunEngine
+
+                await asyncio.to_thread(RunEngine.warmup)
+            except Exception:
+                log.warning("Run warmup failed; initialization will be retried when a run starts", exc_info=True)
         yield
     finally:
         for run_id in runtime.live_run_ids():
