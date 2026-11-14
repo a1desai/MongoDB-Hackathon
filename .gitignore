@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+node_modules/
+.next/
+data/raw/*
+!data/raw/sources.json
+data/processed/households.json
+*.egg-info/
