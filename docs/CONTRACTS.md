@@ -20,7 +20,7 @@ there, add it and note it at the top of your final report.
 3. **Auditor retrieval is hybrid search**: `$rankFusion` over an Atlas Search index on `ledger.summary`
    (`ledger_search`) and an `autoEmbed` vector index on `ledger.summary`, plus `$vectorSearch` on
    `policy_docs`. Fall back to a `$regex`/`$text` query if search indexes are not ready.
-4. **LLM provider is OpenAI** (`LLM_PROVIDER=openai`, `OPENAI_API_KEY`, `LLM_MODEL_SMART=gpt-5.5`,
+4. **LLM provider is OpenAI** (`LLM_PROVIDER=openai`, `OPENAI_API_KEY`, `LLM_MODEL_SMART=gpt-5.4-mini`,
    `LLM_MODEL_FAST=gpt-5.4-mini`), using the `openai` SDK with JSON-schema structured output and
    `langsmith.wrappers.wrap_openai`. `LLM_PROVIDER=anthropic` stays supported. With no key for the
    selected provider, every LLM call takes the deterministic fallback (`source: "fallback"`).

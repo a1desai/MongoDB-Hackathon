@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"  # openai | anthropic
     openai_api_key: str = ""
     anthropic_api_key: str = ""
-    llm_model_smart: str = "gpt-5.5"  # Planner, Auditor
+    llm_model_smart: str = "gpt-5.4-mini"  # Planner, Auditor
     llm_model_fast: str = "gpt-5.4-mini"  # world agents, Negotiator
     llm_concurrency: int = 10
     llm_mode: str = "live"  # live | cache_first | cache_only
